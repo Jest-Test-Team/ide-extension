@@ -1,7 +1,7 @@
 import type { RiskLevel, Signal } from './signals';
 
-export const HIGH_THRESHOLD = 8;
-export const MEDIUM_THRESHOLD = 4;
+export const HIGH_THRESHOLD = 9;
+export const MEDIUM_THRESHOLD = 5;
 
 export interface Boost {
   label: string;
@@ -19,6 +19,8 @@ export interface RiskScore {
   allowlisted: boolean;
   /** Allowlisted, but a known-bad entry still forced the level. */
   allowlistOverridden: boolean;
+  /** The score reached high, but no combination or known-bad entry backs it, so it shows as medium. */
+  capped: boolean;
 }
 
 /**
@@ -82,15 +84,19 @@ export function scoreExtension(raw: readonly Signal[], opts: { allowlisted?: boo
   const forced = signals.reduce<RiskLevel | undefined>((lvl, s) => maxLevel(lvl, s.force), undefined);
   const allowlisted = !!opts.allowlisted;
   if (allowlisted && !forced) {
-    return { score: 0, level: 'low', signals, boosts, allowlisted, allowlistOverridden: false };
+    return { score: 0, level: 'low', signals, boosts, allowlisted, allowlistOverridden: false, capped: false };
   }
+  // Capabilities alone (process, keychain, clipboard) describe many legitimate tools; reaching high
+  // takes signals that only mean something together, or a known-bad entry.
+  const capped = levelFor(total) === 'high' && !boosts.length && !forced && !signals.some((s) => s.id === 'ext/known-bad' && s.weight > 0);
   return {
     score: total,
-    level: maxLevel(levelFor(total), forced)!,
+    level: capped ? 'medium' : maxLevel(levelFor(total), forced)!,
     signals,
     boosts,
     allowlisted,
     allowlistOverridden: allowlisted && !!forced,
+    capped,
   };
 }
 

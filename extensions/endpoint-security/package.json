@@ -195,7 +195,8 @@
       }
     ],
     "nodeEntries": {
-      "ptreeAgent": "src/ptree/agent.ts"
+      "ptreeAgent": "src/ptree/agent.ts",
+      "extScanWorker": "src/extscan/worker.ts"
     },
     "webEntries": {
       "ptree": "src/web/ptree.ts"

@@ -75,6 +75,12 @@ export const SIGNALS: Record<string, SignalInfo> = {
     severity: 'hint',
     description: 'Offline check only: the publisher is not one of the well-known publishers bundled with the scanner. This is not a negative verdict; it only amplifies other signals. Enable the Marketplace lookup for real publisher verification.',
   },
+  'ext/trusted-publisher': {
+    title: 'Well-known publisher',
+    weight: -2,
+    severity: 'hint',
+    description: 'Installed from the Marketplace by a publisher on the built-in trusted list. Marketplace publisher names are unique, so the name cannot be borrowed there (a sideloaded VSIX can claim any publisher and gets no credit).',
+  },
   'ext/typosquat': {
     title: 'Identifier resembles a popular extension',
     weight: 4,
@@ -107,9 +113,9 @@ export const SIGNALS: Record<string, SignalInfo> = {
   },
   'ext/dynamic-code': {
     title: 'Evaluates dynamically built code',
-    weight: 2,
+    weight: 1,
     severity: 'warning',
-    description: '`eval`, `new Function`, `vm.run*` or `require()` with a computed module name can run code that is not visible in the package.',
+    description: '`eval`, `new Function`, `vm.run*` or `require()` with a computed module name can run code that is not visible in the package. Common in bundled libraries (schema compilers, plugin loaders); weighs in mainly together with obfuscation.',
     refs: [ATTACK('T1027', 'Obfuscated Files or Information'), { label: 'CWE-95: Eval Injection', url: 'https://cwe.mitre.org/data/definitions/95.html' }],
   },
   'ext/hardcoded-ip': {

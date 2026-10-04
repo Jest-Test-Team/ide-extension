@@ -70,8 +70,10 @@ describe('known-bad list', () => {
 });
 
 describe('manifest signals', () => {
-  it('well-known extension activating on language is clean', () => {
-    expect(ids(ext('golang.go', { activationEvents: ['onLanguage:go'] }))).toEqual([]);
+  it('well-known publisher from the Marketplace gets credit; the same publisher sideloaded does not', () => {
+    expect(ids(ext('golang.go', { activationEvents: ['onLanguage:go'] }, { source: 'gallery' }))).toEqual(['ext/trusted-publisher']);
+    expect(ids(ext('golang.go', {}, { source: 'vsix' }))).toEqual(['ext/sideloaded']);
+    expect(ids(ext('golang.go', {}, { builtin: true }))).toEqual([]);
   });
 
   it('flags startup activation, untrusted workspaces, many dependencies, sideloading, unknown publisher', () => {
@@ -99,6 +101,7 @@ describe('manifest signals', () => {
   it('onStartupFinished is the weaker startup signal; limited untrusted support is fine', () => {
     expect(ids(ext('github.foo', { activationEvents: ['onStartupFinished'], capabilities: { untrustedWorkspaces: { supported: 'limited' } } }))).toEqual([
       'ext/activates-after-startup',
+      'ext/trusted-publisher',
     ]);
   });
 
@@ -114,9 +117,8 @@ describe('scoring', () => {
   const sig = (id: string, count = 1) => signal(id, id, [], { count });
 
   it('a language server that spawns processes stays low', () => {
-    const r = scoreExtension([sig('ext/process-exec', 12), sig('ext/native-binary'), sig('ext/dynamic-code')]);
-    expect(r).toMatchObject({ score: 4, level: 'medium' });
-    expect(scoreExtension([sig('ext/process-exec', 12), sig('ext/native-binary')]).level).toBe('low');
+    const r = scoreExtension([sig('ext/process-exec', 12), sig('ext/native-binary'), sig('ext/dynamic-code'), sig('ext/activates-after-startup')]);
+    expect(r).toMatchObject({ score: 4, level: 'low' });
   });
 
   it('counts each signal once and merges duplicates', () => {
@@ -135,6 +137,14 @@ describe('scoring', () => {
   it('unknown publisher + startup + process exec gets the combination boost', () => {
     const r = scoreExtension([sig('ext/unknown-publisher'), sig('ext/activates-on-startup'), sig('ext/process-exec')]);
     expect(r).toMatchObject({ score: 5, level: 'medium' });
+    const squat = scoreExtension([sig('ext/typosquat'), sig('ext/unknown-publisher'), sig('ext/activates-on-startup'), sig('ext/process-exec')]);
+    expect(squat).toMatchObject({ score: 9, level: 'high' });
+  });
+
+  it('capabilities alone are capped at medium; a combination unlocks high', () => {
+    const caps = [sig('ext/credential-path'), sig('ext/input-capture'), sig('ext/obfuscated'), sig('ext/native-binary')];
+    expect(scoreExtension(caps)).toMatchObject({ score: 9, level: 'medium', capped: true });
+    expect(scoreExtension([...caps, sig('ext/exfil-endpoint')])).toMatchObject({ level: 'high', capped: false });
   });
 
   it('known malware forces high even when allowlisted', () => {

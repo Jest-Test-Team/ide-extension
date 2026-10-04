@@ -1,0 +1,11 @@
+{
+  "name": "python",
+  "displayName": "Python",
+  "publisher": "ms-pythom",
+  "version": "2026.1.0",
+  "engines": { "vscode": "^1.90.0" },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ]
+}

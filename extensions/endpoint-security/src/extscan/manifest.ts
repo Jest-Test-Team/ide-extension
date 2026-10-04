@@ -73,8 +73,11 @@ export function manifestSignals(ext: ExtInfo, opts: ManifestOptions): Signal[] {
     out.push(make(ext, 'ext/many-dependencies', `Depends on ${deps.length} other extensions.`, 'extensionDependencies'));
   }
 
+  const sideloaded = ext.source === 'vsix' || ext.source === 'resource';
   if (!opts.trustedPublishers.has(publisher)) {
     out.push(make(ext, 'ext/unknown-publisher', `Publisher \`${publisher}\` is not in the built-in trusted list.`, 'publisher'));
+  } else if (!sideloaded && !ext.builtin) {
+    out.push(make(ext, 'ext/trusted-publisher', `Publisher \`${publisher}\` is on the built-in trusted list.`, 'publisher'));
   }
 
   const squat = findTyposquat(id, opts.popular);
@@ -83,7 +86,7 @@ export function manifestSignals(ext: ExtInfo, opts: ManifestOptions): Signal[] {
     out.push(make(ext, 'ext/typosquat', `\`${id}\` resembles the popular extension \`${squat.target}\` (${how}).`, 'name'));
   }
 
-  if (ext.source === 'vsix' || ext.source === 'resource') {
+  if (sideloaded) {
     out.push(make(ext, 'ext/sideloaded', `Installed from a ${ext.source === 'vsix' ? 'VSIX file' : 'local resource'}, not from the Marketplace.`));
   }
 

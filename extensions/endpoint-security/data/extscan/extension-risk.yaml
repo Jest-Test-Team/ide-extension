@@ -1,0 +1,124 @@
+# Code rules for the installed-extension scanner (bundled JavaScript of installed extensions).
+# Rule ids are `ext/<signal>.<variant>`; the signal (weight, title, references) lives in
+# src/extscan/signals.ts. Each signal counts once per extension, however many rules or lines hit.
+id: extension-risk
+title: Installed extension risk signals
+version: "1"
+refs:
+  - label: VS Code — Extension runtime security
+    url: https://code.visualstudio.com/docs/configure/extensions/extension-runtime-security
+rules:
+  - id: ext/process-exec.child-process
+    kind: pattern
+    title: Loads child_process
+    severity: info
+    languages: [javascript]
+    message: "Loads `child_process` (`{{match}}`): can run external programs."
+    refs:
+      - label: "MITRE ATT&CK T1059 — Command and Scripting Interpreter"
+        url: https://attack.mitre.org/techniques/T1059/
+    pattern: "(?:require\\s*\\(\\s*|from\\s*|import\\s*\\(\\s*)['\"](?:node:)?child_process['\"]\\)?"
+
+  - id: ext/dynamic-code.eval
+    title: eval / Function constructor
+    severity: warning
+    languages: [javascript]
+    message: "`{{match}}(…)` evaluates code built at run time."
+    refs:
+      - label: "CWE-95: Eval Injection"
+        url: https://cwe.mitre.org/data/definitions/95.html
+    # Separate top-level patterns: predicates are not applied inside [...] alternations.
+    query: |
+      ((call_expression function: (identifier) @match) (#eq? @match "eval"))
+      ((call_expression function: (identifier) @match) (#eq? @match "Function"))
+      ((new_expression constructor: (identifier) @match) (#eq? @match "Function"))
+
+  - id: ext/dynamic-code.vm
+    title: vm module code execution
+    severity: warning
+    languages: [javascript]
+    message: "`{{match}}(…)` runs code in a VM context."
+    refs:
+      - label: "Node.js — vm module"
+        url: https://nodejs.org/api/vm.html
+    query: '((call_expression function: (member_expression property: (property_identifier) @match)) (#match? @match "^(runInNewContext|runInThisContext|runInContext|compileFunction)$"))'
+
+  - id: ext/dynamic-code.require
+    title: require() with a computed module name
+    severity: info
+    languages: [javascript]
+    message: "`require({{arg}})` loads a module whose name is computed at run time."
+    refs:
+      - label: "MITRE ATT&CK T1027 — Obfuscated Files or Information"
+        url: https://attack.mitre.org/techniques/T1027/
+    query: |
+      ((call_expression function: (identifier) @match arguments: (arguments . (identifier) @arg)) (#eq? @match "require"))
+      ((call_expression function: (identifier) @match arguments: (arguments . (binary_expression) @arg)) (#eq? @match "require"))
+      ((call_expression function: (identifier) @match arguments: (arguments . (call_expression) @arg)) (#eq? @match "require"))
+      ((call_expression function: (identifier) @match arguments: (arguments . (template_string (template_substitution)) @arg)) (#eq? @match "require"))
+
+  - id: ext/hardcoded-ip.url
+    kind: pattern
+    title: URL with a literal public IP address
+    severity: warning
+    languages: [javascript]
+    message: "Connects to the literal address `{{value}}` (`{{match}}`)."
+    refs:
+      - label: "MITRE ATT&CK T1071 — Application Layer Protocol"
+        url: https://attack.mitre.org/techniques/T1071/
+    pattern: "\\b(?:https?|wss?|ftp|tcp|udp)://(?<value>(?:\\d{1,3}\\.){3}\\d{1,3})(?![\\d.])"
+    validate: publicIpv4
+
+  - id: ext/hardcoded-ip.literal
+    kind: pattern
+    title: String literal holding a public IP address
+    severity: warning
+    languages: [javascript]
+    message: "String literal holds the public address `{{value}}`."
+    refs:
+      - label: "MITRE ATT&CK T1071 — Application Layer Protocol"
+        url: https://attack.mitre.org/techniques/T1071/
+    pattern: "['\"`](?<value>(?:\\d{1,3}\\.){3}\\d{1,3})(?::\\d{2,5})?['\"`]"
+    validate: publicIpv4
+
+  - id: ext/exfil-endpoint.service
+    kind: pattern
+    title: Exfiltration / tunnelling / IP-lookup service
+    severity: warning
+    languages: [javascript]
+    message: "References `{{match}}`, a service commonly used to send data out or locate the host."
+    refs:
+      - label: "MITRE ATT&CK T1567 — Exfiltration Over Web Service"
+        url: https://attack.mitre.org/techniques/T1567/
+      - label: "MITRE ATT&CK T1016 — System Network Configuration Discovery"
+        url: https://attack.mitre.org/techniques/T1016/
+    flags: i
+    # Path-specific endpoints match anywhere; bare service hosts need `//` in front (a URL), so
+    # domain lists such as dynamic-DNS / public-suffix tables do not trigger.
+    pattern: "\\b(?:discord(?:app)?\\.com/api/webhooks/|api\\.telegram\\.org/bot|pastebin\\.com/(?:raw|api)/)|//(?:[\\w-]+\\.)*(?:hastebin\\.com|paste\\.ee|ghostbin\\.\\w+|transfer\\.sh|webhook\\.site|interact\\.sh|burpcollaborator\\.net|api\\.ipify\\.org|ipinfo\\.io|ip-api\\.com|icanhazip\\.com|ifconfig\\.me|gist\\.githubusercontent\\.com)\\b|//[\\w-]+\\.(?:ngrok(?:-free)?\\.(?:io|app|dev)|trycloudflare\\.com|pipedream\\.net|requestcatcher\\.com|oast\\.(?:pro|live|fun|me|site|online))\\b"
+
+  - id: ext/credential-path.files
+    kind: pattern
+    title: Credential store path
+    severity: warning
+    languages: [javascript]
+    message: "References the credential store `{{match}}`."
+    refs:
+      - label: "MITRE ATT&CK T1552.001 — Credentials In Files"
+        url: https://attack.mitre.org/techniques/T1552/001/
+      - label: "MITRE ATT&CK T1555.003 — Credentials from Web Browsers"
+        url: https://attack.mitre.org/techniques/T1555/003/
+    pattern: "\\.ssh['\"]?\\s*[,+]?\\s*['\"]?[/\\\\]{0,2}(?:id_(?:rsa|ed25519|ecdsa|dsa)|authorized_keys)\\b|\\.ssh[/\\\\]{1,2}(?:id_\\w+|authorized_keys)\\b|\\.aws[/\\\\]{1,2}credentials\\b|['\"/\\\\]\\.git-credentials\\b|['\"/\\\\]\\.(?:npmrc|pypirc|netrc)['\"]|\\.docker[/\\\\]{1,2}config\\.json|\\.kube[/\\\\]{1,2}config\\b|\\.config[/\\\\]{1,2}gcloud\\b|['\"/\\\\](?:Login Data|Web Data|Local State|Cookies)['\"]|['\"/\\\\]logins\\.json['\"]|['\"/\\\\]key[34]\\.db['\"]|state\\.vscdb\\b|Local Storage[/\\\\]{1,2}leveldb|nkbihfbeogaeaoehlefnkodbefgpgknn|bfnaelmomeimhlpmgjnjophhpkkoljpa|Library[/\\\\]{1,2}Keychains|security\\s+(?:find|dump)-(?:generic-password|internet-password|keychain)"
+
+  - id: ext/input-capture.clipboard-keys
+    kind: pattern
+    title: Clipboard or keystroke capture
+    severity: warning
+    languages: [javascript]
+    message: "`{{match}}` reads the clipboard or captures keystrokes."
+    refs:
+      - label: "MITRE ATT&CK T1115 — Clipboard Data"
+        url: https://attack.mitre.org/techniques/T1115/
+      - label: "MITRE ATT&CK T1056.001 — Keylogging"
+        url: https://attack.mitre.org/techniques/T1056/001/
+    pattern: "\\bclipboard\\.readText\\b|['\"]pbpaste\\b|\\bxclip\\s+(?:-o|-out)|\\bxsel\\s+(?:-o|--output|-b)|Get-Clipboard|\\bGetAsyncKeyState\\b|\\bSetWindowsHookEx[AW]?\\b|['\"](?:iohook|uiohook-napi|node-global-key-listener|node-hid-keylogger)['\"]"

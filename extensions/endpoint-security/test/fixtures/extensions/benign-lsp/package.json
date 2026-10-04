@@ -1,0 +1,11 @@
+{
+  "name": "benign-lsp",
+  "displayName": "Benign language server (scanner test fixture)",
+  "publisher": "example",
+  "version": "2.3.4",
+  "engines": { "vscode": "^1.90.0" },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:foo"
+  ]
+}
