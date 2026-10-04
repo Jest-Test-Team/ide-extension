@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { API_RULES } from './apiRules';
 import { COMPLIANCE_CUSTOM_RULES } from './complianceRules';
 import { SCENARIO_SELECTOR, SCENARIO_TEMPLATE, SimulateCodeLens, Simulator } from './ptree/commands';
+import { registerExtensionScan } from './extscan/commands';
 import { loadBuiltInPacks, rulesOf } from './rulePacks';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -86,6 +87,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return dest;
     }),
   );
+
+  // ---- Installed-extension risk scan (read-only; never modifies or uninstalls anything)
+  registerExtensionScan(context, output);
 
   // ---- Process-tree simulation (data-only replay through the local / remote agent)
   const simulator = new Simulator(context);

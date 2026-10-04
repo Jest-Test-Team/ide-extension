@@ -66,6 +66,46 @@
         "command": "endpointSecurity.newScenario",
         "title": "New Process-Tree Scenario",
         "category": "Endpoint Security"
+      },
+      {
+        "command": "endpointSecurity.scanExtensions",
+        "title": "Scan Installed Extensions",
+        "category": "Endpoint Security",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "endpointSecurity.exportExtensionReport",
+        "title": "Export Extension Risk Report (SARIF / Markdown)…",
+        "category": "Endpoint Security",
+        "icon": "$(save)"
+      },
+      {
+        "command": "endpointSecurity.extensionScan.allowlist",
+        "title": "Trust (Allowlist)…",
+        "category": "Endpoint Security",
+        "icon": "$(verified)"
+      },
+      {
+        "command": "endpointSecurity.extensionScan.unallowlist",
+        "title": "Remove from Allowlist",
+        "category": "Endpoint Security"
+      },
+      {
+        "command": "endpointSecurity.extensionScan.openInMarketplace",
+        "title": "Show Extension Page",
+        "category": "Endpoint Security",
+        "icon": "$(extensions)"
+      },
+      {
+        "command": "endpointSecurity.extensionScan.revealFolder",
+        "title": "Reveal Install Folder",
+        "category": "Endpoint Security",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "endpointSecurity.extensionScan.updateKnownBadList",
+        "title": "Update Known-Bad Extension List",
+        "category": "Endpoint Security"
       }
     ],
     "configuration": {
@@ -119,6 +159,49 @@
           "type": "string",
           "default": "",
           "markdownDescription": "Send simulations to a remote agent (JSON-RPC over HTTP), e.g. one started in a sandbox VM with `node ptreeAgent.js --http 8765`. Empty = local agent process."
+        },
+        "endpointSecurity.extensionScan.allowlist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Extensions you trust: `publisher.name` (any version) or `publisher.name@version` (that version only, so an update is scored again). Reasons are still listed. A listing as removed for malware overrides the allowlist."
+        },
+        "endpointSecurity.extensionScan.trustedPublishers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Publisher ids to add to the built-in list of well-known publishers (e.g. your company's)."
+        },
+        "endpointSecurity.extensionScan.includeBuiltin": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also scan the extensions that ship with VS Code."
+        },
+        "endpointSecurity.extensionScan.includeNodeModules": {
+          "type": "boolean",
+          "default": true,
+          "description": "Scan JavaScript inside extensions' node_modules folders (dependencies run with the same rights)."
+        },
+        "endpointSecurity.extensionScan.maxFileSizeMB": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "description": "Skip JavaScript files larger than this (MB). Skipped files are listed as 'Some files were not scanned'."
+        },
+        "endpointSecurity.extensionScan.maxFilesPerExtension": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 1,
+          "description": "Maximum JavaScript files scanned per extension (entry points first, dependencies last)."
+        },
+        "endpointSecurity.extensionScan.updateKnownBadList": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Before a scan, download Microsoft's [list of removed extensions](https://github.com/microsoft/vsmarketplace/blob/main/RemovedPackages.md) when the local copy is older than a week. Downloads a public file from GitHub; sends nothing about your extensions. Off: the copy bundled with this version is used."
         }
       }
     },
@@ -129,6 +212,73 @@
           "when": "resourceFilename =~ /\\.ptree\\.ya?ml$/",
           "group": "navigation"
         }
+      ],
+      "view/title": [
+        {
+          "command": "endpointSecurity.scanExtensions",
+          "when": "view == endpointSecurity.extensions",
+          "group": "navigation@1"
+        },
+        {
+          "command": "endpointSecurity.exportExtensionReport",
+          "when": "view == endpointSecurity.extensions",
+          "group": "navigation@2"
+        },
+        {
+          "command": "endpointSecurity.extensionScan.updateKnownBadList",
+          "when": "view == endpointSecurity.extensions",
+          "group": "more@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "endpointSecurity.extensionScan.openInMarketplace",
+          "when": "view == endpointSecurity.extensions && viewItem =~ /^extScan\\.ext/",
+          "group": "inline@1"
+        },
+        {
+          "command": "endpointSecurity.extensionScan.revealFolder",
+          "when": "view == endpointSecurity.extensions && viewItem =~ /^extScan\\.ext/",
+          "group": "inline@2"
+        },
+        {
+          "command": "endpointSecurity.extensionScan.allowlist",
+          "when": "view == endpointSecurity.extensions && viewItem == extScan.ext",
+          "group": "1_trust@1"
+        },
+        {
+          "command": "endpointSecurity.extensionScan.unallowlist",
+          "when": "view == endpointSecurity.extensions && viewItem == extScan.ext.allowlisted",
+          "group": "1_trust@2"
+        },
+        {
+          "command": "endpointSecurity.extensionScan.openInMarketplace",
+          "when": "view == endpointSecurity.extensions && viewItem =~ /^extScan\\.ext/",
+          "group": "2_open@1"
+        },
+        {
+          "command": "endpointSecurity.extensionScan.revealFolder",
+          "when": "view == endpointSecurity.extensions && viewItem =~ /^extScan\\.ext/",
+          "group": "2_open@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "endpointSecurity.extensionScan.allowlist",
+          "when": "false"
+        },
+        {
+          "command": "endpointSecurity.extensionScan.unallowlist",
+          "when": "false"
+        },
+        {
+          "command": "endpointSecurity.extensionScan.openInMarketplace",
+          "when": "false"
+        },
+        {
+          "command": "endpointSecurity.extensionScan.revealFolder",
+          "when": "false"
+        }
       ]
     },
     "yamlValidation": [
@@ -138,6 +288,30 @@
           "*.ptree.yml"
         ],
         "url": "./dist/ptree/ptree.schema.json"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "endpointSecurity",
+          "title": "Endpoint Security",
+          "icon": "media/shield.svg"
+        }
+      ]
+    },
+    "views": {
+      "endpointSecurity": [
+        {
+          "id": "endpointSecurity.extensions",
+          "name": "Installed Extensions",
+          "icon": "media/shield.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "endpointSecurity.extensions",
+        "contents": "Score every installed extension for risk signals: startup activation, process execution, credential paths, exfiltration endpoints, obfuscation, look-alike names and Microsoft's list of removed extensions.\nThe scan is read-only and runs locally.\n[Scan Installed Extensions](command:endpointSecurity.scanExtensions)"
       }
     ]
   },

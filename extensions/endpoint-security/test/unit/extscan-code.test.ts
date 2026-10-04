@@ -7,6 +7,7 @@ import { shannonEntropy } from '../../src/extscan/codeRules';
 import { loadCodeRules, scanExtensionCode, type CodeScanOptions } from '../../src/extscan/codeScan';
 import { loadManifestOptions } from '../../src/extscan/data';
 import { manifestSignals } from '../../src/extscan/manifest';
+import { reportFindings, toExtensionMarkdown, toExtensionSarif } from '../../src/extscan/report';
 import { scoreExtension } from '../../src/extscan/score';
 
 const data = join(__dirname, '../../data/extscan');
@@ -20,7 +21,8 @@ async function scan(name: string, opts = OPTS) {
   const code = await scanExtensionCode(engine, testHost(), dir, pkg, opts);
   const id = `${pkg.publisher as string}.${pkg.name as string}`;
   const manifest = manifestSignals({ id, version: pkg.version as string, path: dir, packageJSON: pkg, builtin: false, source: 'gallery' }, manifestOpts);
-  return { code, score: scoreExtension([...manifest, ...code.signals]) };
+  const score = scoreExtension([...manifest, ...code.signals]);
+  return { code, score, result: { ext: { id, version: pkg.version as string, path: dir, builtin: false }, risk: score } };
 }
 
 /** `signal` → sorted `file:line rule-variant` strings. */
@@ -94,5 +96,21 @@ describe('extension code scan', () => {
     expect(shannonEntropy('aaaa')).toBe(0);
     expect(shannonEntropy('the quick brown fox jumps over the lazy dog')).toBeLessThan(4.5);
     expect(shannonEntropy(Buffer.from(Array.from({ length: 600 }, (_, i) => (i * 7919 + 13) % 251)).toString('base64'))).toBeGreaterThan(5.2);
+  });
+
+  it('exports findings relative to the extensions folder with one ext/risk result per extension', async () => {
+    const { result } = await scan('suspicious-ext');
+    const findings = reportFindings([result]);
+    expect([...findings.keys()].sort()).toEqual(['suspicious-ext/bin/helper.node', 'suspicious-ext/out/extension.js', 'suspicious-ext/out/payload.js', 'suspicious-ext/package.json']);
+    const risk = findings.get('suspicious-ext/package.json')!.find((f) => f.ruleId === 'ext/risk')!;
+    expect(risk).toMatchObject({ severity: 'error' });
+    expect(risk.message).toMatch(/^helpful-dev\.theme-helper@1\.0\.0: high risk/);
+    const sarif = toExtensionSarif([result], loadCodeRules(data).rules, '0.0.0') as { runs: { tool: { driver: { rules: { id: string }[] } }; results: { ruleId: string }[] }[] };
+    const ruleIds = new Set(sarif.runs[0].tool.driver.rules.map((r) => r.id));
+    expect(sarif.runs[0].results.every((r) => ruleIds.has(r.ruleId))).toBe(true);
+    const md = toExtensionMarkdown([result], loadCodeRules(data).rules);
+    expect(md).toMatch(/\| Theme Helper|\| helpful-dev\.theme-helper/);
+    expect(md).toContain('## Findings');
+    expect(md).not.toContain('ext/risk');
   });
 });
