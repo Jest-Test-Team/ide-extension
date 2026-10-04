@@ -24,6 +24,14 @@ npm run package            # vsix/*.vsix
 
 Press **F5** in VS Code and choose *Run Endpoint Security*, *Run Julia Profiler* or *Run HW Security* to open an Extension Development Host. The host opens on that extension's `test/fixtures`.
 
+## install 
+```bash
+code --install-extension vsix/endpoint-security-0.1.0.vsix
+code --install-extension vsix/julia-profiler-0.1.0.vsix
+code --install-extension vsix/hw-security-0.1.0.vsix
+code --install-extension vsix/security-pack-0.1.0.vsix   # optional
+```
+
 ### Tests that need external tools
 
 | Env var | Enables |
