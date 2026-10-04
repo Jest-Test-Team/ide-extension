@@ -7,6 +7,7 @@ export * from './diagnostics';
 export * from './webview';
 export * from './proc';
 export * from './rulePacks';
+export * from './cli';
 
 /** Tree-sitter host reading `tree-sitter.wasm` and grammar files from `dist/grammars`. */
 export function createTreeSitterHost(context: vscode.ExtensionContext): TreeSitterHost {

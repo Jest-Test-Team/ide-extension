@@ -23,7 +23,8 @@
     "vscode": "^1.90.0"
   },
   "categories": [
-    "Extension Packs"
+    "Extension Packs",
+    "Linters"
   ],
   "extensionPack": [
     "jest-test-team.endpoint-security",
@@ -31,6 +32,84 @@
     "jest-test-team.hw-security"
   ],
   "scripts": {
+    "build": "node ../../scripts/build-extension.mjs",
+    "watch": "node ../../scripts/build-extension.mjs --watch",
+    "vscode:prepublish": "node ../../scripts/build-extension.mjs --production",
+    "test:integration": "npm run build && tsc -p tsconfig.test.json && vscode-test",
     "package": "node -e \"require('fs').mkdirSync('../../vsix',{recursive:true})\" && vsce package --no-dependencies --out ../../vsix/"
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "securityPack.installCli",
+        "title": "Install 'jest-security' Command in PATH",
+        "category": "Security Pack"
+      },
+      {
+        "command": "securityPack.uninstallCli",
+        "title": "Uninstall 'jest-security' Command",
+        "category": "Security Pack"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@ide-ext/core": "*"
+  },
+  "x-build": {
+    "nodeEntries": {
+      "cli/jest-security": "../../packages/cli/src/bin/jest-security.ts"
+    },
+    "copy": [
+      {
+        "from": "pkg:web-tree-sitter/tree-sitter.wasm",
+        "to": "grammars/tree-sitter.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-c/tree-sitter-c.wasm",
+        "to": "grammars/tree-sitter-c.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-cpp/tree-sitter-cpp.wasm",
+        "to": "grammars/tree-sitter-cpp.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-rust/tree-sitter-rust.wasm",
+        "to": "grammars/tree-sitter-rust.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-go/tree-sitter-go.wasm",
+        "to": "grammars/tree-sitter-go.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-typescript/tree-sitter-typescript.wasm",
+        "to": "grammars/tree-sitter-typescript.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-typescript/tree-sitter-tsx.wasm",
+        "to": "grammars/tree-sitter-tsx.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-julia/tree-sitter-julia.wasm",
+        "to": "grammars/tree-sitter-julia.wasm"
+      },
+      {
+        "from": "../endpoint-security/data/rules",
+        "to": "rules"
+      },
+      {
+        "from": "../endpoint-security/data/ptree",
+        "to": "ptree"
+      },
+      {
+        "from": "../endpoint-security/data/extscan",
+        "to": "extscan"
+      },
+      {
+        "from": "../julia-profiler/scripts",
+        "to": "scripts"
+      }
+    ]
   }
 }

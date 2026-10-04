@@ -74,6 +74,16 @@
         "title": "Refresh Side-Channel Points",
         "category": "HW Security",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "hwSecurity.installCli",
+        "title": "Install 'jest-hw / jest-embedded' Command in PATH",
+        "category": "HW Security"
+      },
+      {
+        "command": "hwSecurity.uninstallCli",
+        "title": "Uninstall 'jest-hw / jest-embedded' Command",
+        "category": "HW Security"
       }
     ],
     "configuration": {
@@ -206,7 +216,8 @@
       }
     ],
     "nodeEntries": {
-      "entropyWorker": "src/entropy/worker.ts"
+      "entropyWorker": "src/entropy/worker.ts",
+      "cli/jest-hw": "../../packages/cli/src/bin/jest-hw.ts"
     },
     "webEntries": {
       "report": "src/web/report.ts"

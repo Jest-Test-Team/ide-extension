@@ -53,7 +53,7 @@
       },
       {
         "command": "endpointSecurity.exportReport",
-        "title": "Export Compliance Report (SARIF / Markdown)…",
+        "title": "Export Compliance Report (SARIF / Markdown)\u2026",
         "category": "Endpoint Security"
       },
       {
@@ -75,13 +75,13 @@
       },
       {
         "command": "endpointSecurity.exportExtensionReport",
-        "title": "Export Extension Risk Report (SARIF / Markdown)…",
+        "title": "Export Extension Risk Report (SARIF / Markdown)\u2026",
         "category": "Endpoint Security",
         "icon": "$(save)"
       },
       {
         "command": "endpointSecurity.extensionScan.allowlist",
-        "title": "Trust (Allowlist)…",
+        "title": "Trust (Allowlist)\u2026",
         "category": "Endpoint Security",
         "icon": "$(verified)"
       },
@@ -105,6 +105,16 @@
       {
         "command": "endpointSecurity.extensionScan.updateKnownBadList",
         "title": "Update Known-Bad Extension List",
+        "category": "Endpoint Security"
+      },
+      {
+        "command": "endpointSecurity.installCli",
+        "title": "Install 'jest-endpoint' Command in PATH",
+        "category": "Endpoint Security"
+      },
+      {
+        "command": "endpointSecurity.uninstallCli",
+        "title": "Uninstall 'jest-endpoint' Command",
         "category": "Endpoint Security"
       }
     ],
@@ -375,7 +385,8 @@
     ],
     "nodeEntries": {
       "ptreeAgent": "src/ptree/agentMain.ts",
-      "extScanWorker": "src/extscan/worker.ts"
+      "extScanWorker": "src/extscan/worker.ts",
+      "cli/jest-endpoint": "../../packages/cli/src/bin/jest-endpoint.ts"
     },
     "webEntries": {
       "ptree": "src/web/ptree.ts"

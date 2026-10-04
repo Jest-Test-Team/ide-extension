@@ -1,5 +1,5 @@
 import { RuleEngine, toMarkdownReport, toSarif, type Finding, type Rule } from '@ide-ext/core';
-import { createTreeSitterHost, DiagnosticsController, loadRulePackFiles, watchRulePackFiles } from '@ide-ext/core/vscode';
+import { createTreeSitterHost, DiagnosticsController, loadRulePackFiles, registerCliCommands, watchRulePackFiles } from '@ide-ext/core/vscode';
 import * as vscode from 'vscode';
 import { API_LANGUAGES, ApiCompletionProvider, ApiHoverProvider, ApiSignatureHelpProvider } from './apiProviders';
 import { join } from 'node:path';
@@ -10,6 +10,8 @@ import { registerExtensionScan } from './extscan/commands';
 import { loadBuiltInPacks, rulesOf } from './rulePacks';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  // Command-line tool bundled in dist/cli (Install … Command in PATH).
+  registerCliCommands(context, 'endpointSecurity', [{ name: 'jest-endpoint', script: 'dist/cli/jest-endpoint.js' }]);
   const packs = loadBuiltInPacks(join(context.extensionPath, 'dist', 'rules'));
   const complianceRules = [...rulesOf(packs), ...COMPLIANCE_CUSTOM_RULES];
   /** Rule groups that can be toggled as a whole. */

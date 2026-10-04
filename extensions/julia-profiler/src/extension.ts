@@ -1,5 +1,5 @@
 import { RuleEngine, type Rule } from '@ide-ext/core';
-import { createTreeSitterHost, DiagnosticsController, openLocation, openWebview } from '@ide-ext/core/vscode';
+import { createTreeSitterHost, DiagnosticsController, openLocation, openWebview, registerCliCommands } from '@ide-ext/core/vscode';
 import * as vscode from 'vscode';
 import { analyze, createWorkload } from './analyze';
 import { createBenchmarkSuite, createBenchmarkWorkflow, runBenchmarks, type RunBenchmarksArgs } from './benchRunner';
@@ -10,6 +10,8 @@ import { RUNTIME_INVALIDATION_ID, RUNTIME_TRIGGER_ID, runtimeFindings } from './
 import { ProfileStore } from './store';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  // Command-line tool bundled in dist/cli (Install … Command in PATH).
+  registerCliCommands(context, 'juliaProfiler', [{ name: 'jest-julia', script: 'dist/cli/jest-julia.js' }]);
   const output = vscode.window.createOutputChannel('Julia Profiler');
   const store = new ProfileStore(context);
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);

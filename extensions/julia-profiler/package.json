@@ -107,6 +107,16 @@
         "command": "juliaProfiler.createBenchmarkWorkflow",
         "title": "Create GitHub Actions Benchmark Workflow (AirspeedVelocity.jl)",
         "category": "Julia Profiler"
+      },
+      {
+        "command": "juliaProfiler.installCli",
+        "title": "Install 'jest-julia' Command in PATH",
+        "category": "Julia Profiler"
+      },
+      {
+        "command": "juliaProfiler.uninstallCli",
+        "title": "Uninstall 'jest-julia' Command",
+        "category": "Julia Profiler"
       }
     ],
     "menus": {
@@ -266,6 +276,9 @@
     "webEntries": {
       "report": "src/web/report.ts",
       "bench": "src/web/bench.ts"
+    },
+    "nodeEntries": {
+      "cli/jest-julia": "../../packages/cli/src/bin/jest-julia.ts"
     }
   }
 }

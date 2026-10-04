@@ -188,3 +188,23 @@ export async function runTool(tool: Tool, argv: readonly string[], io: Io = proc
 declare const __CLI_VERSION__: string | undefined;
 /** Package version injected at build time (`dev` when running from source). */
 export const VERSION = typeof __CLI_VERSION__ !== 'undefined' ? __CLI_VERSION__ : 'dev';
+
+/**
+ * Entry point used by the bin scripts: runs `main`, sets the exit code, and exits quietly when
+ * stdout is closed early (e.g. `jest-endpoint lint . | head`).
+ */
+export function start(main: (argv: readonly string[]) => Promise<number>): void {
+  process.stdout.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EPIPE') {
+      process.exit(process.exitCode ?? 0);
+    }
+    throw err;
+  });
+  void main(process.argv.slice(2)).then(
+    (code) => (process.exitCode = code),
+    (err: Error) => {
+      process.stderr.write(`${err.stack ?? err.message}\n`);
+      process.exitCode = 2;
+    },
+  );
+}

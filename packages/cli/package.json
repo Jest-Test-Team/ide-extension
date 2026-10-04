@@ -3,8 +3,14 @@
   "version": "0.1.0",
   "description": "Command-line tools of the Jest-Test-Team VS Code extensions: jest-endpoint, jest-hw, jest-julia and jest-security.",
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/Jest-Test-Team/ide-extension.git", "directory": "packages/cli" },
-  "engines": { "node": ">=20" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jest-Test-Team/ide-extension.git",
+    "directory": "packages/cli"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "jest-endpoint": "dist/jest-endpoint.js",
     "jest-hw": "dist/jest-hw.js",
@@ -12,9 +18,14 @@
     "jest-julia": "dist/jest-julia.js",
     "jest-security": "dist/jest-security.js"
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "prepublishOnly": "node build.mjs --production"
   },
   "devDependencies": {
     "@ide-ext/core": "*"

@@ -1,5 +1,5 @@
 import { RuleEngine } from '@ide-ext/core';
-import { createTreeSitterHost, DiagnosticsController, loadRulePackFiles, watchRulePackFiles } from '@ide-ext/core/vscode';
+import { createTreeSitterHost, DiagnosticsController, loadRulePackFiles, registerCliCommands, watchRulePackFiles } from '@ide-ext/core/vscode';
 import * as vscode from 'vscode';
 import { analyzePuf, assessEntropy, runRestartTest } from './entropy/commands';
 import { ESP32_RULES } from './esp32Rules';
@@ -8,6 +8,8 @@ import { DEF_TAG, ScaCodeLens, ScaCompletion, ScaIndex, ScaNavigation, tagDiagno
 import { ScaTreeProvider } from './sca/tree';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  // Command-line tool bundled in dist/cli (Install … Command in PATH).
+  registerCliCommands(context, 'hwSecurity', [{ name: 'jest-hw', script: 'dist/cli/jest-hw.js' }, { name: 'jest-embedded', script: 'dist/cli/jest-hw.js' }]);
   const output = vscode.window.createOutputChannel('HW Security');
   context.subscriptions.push(output);
   const config = () => vscode.workspace.getConfiguration('hwSecurity');
