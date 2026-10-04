@@ -4,7 +4,7 @@ Three VS Code extensions for security and systems engineering, plus an extension
 
 | Extension | Folder | What it does |
 |---|---|---|
-| **Endpoint Security & Compliance Toolkit** | [`extensions/endpoint-security`](extensions/endpoint-security/README.md) | WFP / ETW / Endpoint Security API hover + validation, PCI DSS 4.0.1 & CCSP D2 compliance scan with SARIF export, process-tree detection simulation |
+| **Endpoint Security & Compliance Toolkit** | [`extensions/endpoint-security`](extensions/endpoint-security/README.md) | WFP / ETW / Endpoint Security API hover + validation, PCI DSS 4.0.1 & CCSP D2 compliance scan with SARIF export, process-tree detection simulation, risk scan of installed VS Code extensions |
 | **Julia Invalidation & Compiler Profiler** | [`extensions/julia-profiler`](extensions/julia-profiler/README.md) | SnoopCompile.jl invalidation tree & inference flame graph, invalidation linter, benchmark judge vs. git baseline |
 | **Embedded Hardware Security Workbench** | [`extensions/hw-security`](extensions/hw-security/README.md) | ESP32/ESPHome security linter, NIST SP 800-90B entropy & restart tests, PUF metrics, ChipWhisperer side-channel tags |
 | Security & Systems Engineering Pack | `extensions/security-pack` | Installs all three |
@@ -20,7 +20,7 @@ Shared code lives in [`packages/core`](packages/core): a web-tree-sitter host, t
 Build the packages with `npm install && npm run package`, then install them. Install the three extensions first and the pack last: the pack refers to the others by Marketplace ID, so on its own it would try to download them from the Marketplace.
 
 ```bash
-code --install-extension vsix/endpoint-security-0.1.0.vsix
+code --install-extension vsix/endpoint-security-0.2.0.vsix
 code --install-extension vsix/julia-profiler-0.1.0.vsix
 code --install-extension vsix/hw-security-0.1.0.vsix
 code --install-extension vsix/security-pack-0.1.0.vsix   # optional
@@ -30,7 +30,7 @@ You can also use the Extensions view → `…` → **Install from VSIX…**.
 
 ### How to use
 
-Most features run automatically when you open a matching file. The rest are commands: press **⌘⇧P** (Ctrl+Shift+P on Windows/Linux) and type the extension's prefix (`Endpoint Security:`, `HW Security:` or `Julia Profiler:`). HW Security (**chip** icon) and the Julia Profiler (**flame** icon) also add views to the activity bar.
+Most features run automatically when you open a matching file. The rest are commands: press **⌘⇧P** (Ctrl+Shift+P on Windows/Linux) and type the extension's prefix (`Endpoint Security:`, `HW Security:` or `Julia Profiler:`). Endpoint Security (**shield** icon), HW Security (**chip** icon) and the Julia Profiler (**flame** icon) also add views to the activity bar.
 
 The quickest way to try everything is to open the sample files in each extension's `test/fixtures` folder. They are written to trigger the features.
 
@@ -47,6 +47,10 @@ The quickest way to try everything is to open the sample files in each extension
 - **Process-tree simulation:** open `test/fixtures/scenarios/ransom.ptree.yaml` and click **▶ Simulate** at the top of the file.
   - A panel shows the process tree, detections with MITRE ATT&CK links, and a timeline; click a timeline row to jump to its line in the YAML.
   - **New Process-Tree Scenario** creates a template. Nothing is executed: the simulation only replays the event data.
+- **Installed extension risk scan:** click the **shield** icon, then **Scan Installed Extensions**.
+  - Each extension gets **low / medium / high**. Expand it to see the reasons, and click a code reason to open the file at that line.
+  - The scan is heuristic: it can't prove an extension safe, and tools such as language servers legitimately run processes. Right-click → **Trust (Allowlist)…** for extensions you trust.
+  - It reads files only and never uninstalls anything. Network lookups (Marketplace reputation, a fresh removed-extensions list) are opt-in settings.
 
 #### Embedded Hardware Security Workbench
 
@@ -86,7 +90,7 @@ Each extension's **Details** tab in the Extensions view contains its full docume
 先執行 `npm install && npm run package` 產生安裝檔，再進行安裝。請先安裝三個擴充套件，最後才裝 Pack：Pack 以 Marketplace ID 引用其他三個套件，若單獨安裝，它會嘗試從 Marketplace 下載。
 
 ```bash
-code --install-extension vsix/endpoint-security-0.1.0.vsix
+code --install-extension vsix/endpoint-security-0.2.0.vsix
 code --install-extension vsix/julia-profiler-0.1.0.vsix
 code --install-extension vsix/hw-security-0.1.0.vsix
 code --install-extension vsix/security-pack-0.1.0.vsix   # 選用
@@ -96,7 +100,7 @@ code --install-extension vsix/security-pack-0.1.0.vsix   # 選用
 
 ### 使用方式
 
-大多數功能在開啟對應檔案時會自動執行，其餘功能以命令操作：按 **⌘⇧P**（Windows/Linux 為 Ctrl+Shift+P），輸入擴充套件的前綴（`Endpoint Security:`、`HW Security:` 或 `Julia Profiler:`）。HW Security（**晶片**圖示）與 Julia Profiler（**火焰**圖示）也會在左側活動列加入檢視。
+大多數功能在開啟對應檔案時會自動執行，其餘功能以命令操作：按 **⌘⇧P**（Windows/Linux 為 Ctrl+Shift+P），輸入擴充套件的前綴（`Endpoint Security:`、`HW Security:` 或 `Julia Profiler:`）。Endpoint Security（**盾牌**圖示）、HW Security（**晶片**圖示）與 Julia Profiler（**火焰**圖示）也會在左側活動列加入檢視。
 
 最快的試用方式是開啟各擴充套件 `test/fixtures` 資料夾中的範例檔案，這些檔案是為了觸發各項功能而設計的。
 
@@ -113,6 +117,10 @@ code --install-extension vsix/security-pack-0.1.0.vsix   # 選用
 - **程序樹模擬**：開啟 `test/fixtures/scenarios/ransom.ptree.yaml`，點選檔案頂端的 **▶ Simulate**。
   - 面板會顯示程序樹、附 MITRE ATT&CK 連結的偵測結果與時間軸；點選時間軸的列可跳到 YAML 中對應的行。
   - **New Process-Tree Scenario** 可建立範本。模擬只重播事件資料，不會執行任何程式。
+- **已安裝擴充套件風險掃描**：點選**盾牌**圖示，再按 **Scan Installed Extensions**。
+  - 每個擴充套件會標示 **low / medium / high** 風險；展開可查看原因，點選程式碼原因會開啟檔案並跳到該行。
+  - 這是啟發式掃描：無法證明擴充套件安全，語言伺服器等工具本來就會執行程序。信任的擴充套件可按右鍵 → **Trust (Allowlist)…**。
+  - 掃描只讀取檔案，不會解除安裝任何東西。需要網路的查詢（Marketplace 信譽、更新已下架清單）皆須在設定中自行開啟。
 
 #### Embedded Hardware Security Workbench（嵌入式硬體安全工作台）
 

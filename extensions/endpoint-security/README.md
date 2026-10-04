@@ -1,6 +1,6 @@
 # Endpoint Security & Compliance Toolkit
 
-Editor support for people building EDR / AV agents and SIEM / SOAR back-ends.
+Editor support for people building EDR / AV agents and SIEM / SOAR back-ends, plus a risk scan of the VS Code extensions you have installed.
 
 ## WFP, ETW and Endpoint Security API validation
 
@@ -56,6 +56,49 @@ Rules can be single-event `match`, `threshold` (count within a time window) or `
 
 **Nothing is executed.** The agent only evaluates data. To run it elsewhere (e.g. inside your sandbox VM), start `node dist/ptreeAgent.js --http 8765 --host 0.0.0.0` there and set `endpointSecurity.simulation.agentUrl`.
 
+## Installed extension risk scan
+
+The **shield** icon in the activity bar opens **Installed Extensions**. **Scan Installed Extensions** gives every installed extension a heuristic risk level: **low**, **medium** or **high**. Each level comes with the reasons behind it, much like an EDR's suspicious-behaviour score.
+
+> **The scan cannot prove an extension is safe.** It flags risk signals. Many legitimate extensions run processes (language servers, formatters) or read credentials for their own features, so read the reasons before acting. The scan never uninstalls, disables or modifies anything. It only links to the extension's page and its install folder.
+
+Signals:
+
+| Source | Signals (weight) |
+|---|---|
+| Manifest | activates on `*` (+2) or `onStartupFinished` (+1) · runs in untrusted workspaces (+1) · more than 3 `extensionDependencies` (+1) · installed from a VSIX file (+1) · identifier resembles a popular extension, e.g. `ms-pythom.python` (+4) · publisher not on the built-in trusted list (0, amplifies others) · Marketplace install from a well-known publisher (−2) |
+| Code (bundled JS, incl. `node_modules`) | `child_process` (+1) · `eval` / `new Function` / `vm.run*` / computed `require()` (+1) · literal public IP (+2) · webhook / paste / tunnel / IP-lookup service (+3) · credential store paths such as `~/.ssh/id_*`, `.aws/credentials`, browser `Login Data`, VS Code `state.vscdb`, wallets and the keychain CLI (+3) · clipboard reads or keyboard hooks (+2) · javascript-obfuscator output or an encoded payload next to `eval` (+3) · native binaries (+1) |
+| Known-bad list | listed in Microsoft's [RemovedPackages.md](https://github.com/microsoft/vsmarketplace/blob/main/RemovedPackages.md): *Malware* forces **high**; *Impersonation*, *Untrustworthy* and *Expired domain* add +6; *Spam* and owner requests are informational |
+| Marketplace (opt-in) | not listed (+3) · unverified publisher (+1) · fewer than 1,000 installs (+1) · no update for 2 years (0) · verified publisher (−1) |
+
+Each signal counts **once**, however often it occurs. Some signals only add up when they appear together:
+- Credential paths plus a network endpoint: +4.
+- Obfuscation plus code evaluation: +2.
+- Unknown publisher plus startup activation plus process or input capture: +2.
+
+Scores map to levels: 5 or more is **medium** and 9 or more is **high**. A score reaches high only through one of these combinations or a known-bad entry. Otherwise it is capped at medium, so a well-behaved tool with many capabilities doesn't look like malware.
+
+Code hits open read-only at the exact file and line. Code is scanned with the same tree-sitter rule engine as the other checks, in a worker thread. Results are cached per extension version, so only new or updated extensions are scanned again.
+
+- **Trust (Allowlist)…** on an extension lists its reasons without scoring them. Trusting `publisher.name@version` covers only that version, so an update is scored again. A *Malware* listing overrides the allowlist.
+- **Export Extension Risk Report** writes SARIF (one `ext/risk` result per extension, plus every finding) or Markdown.
+
+Privacy: the scan reads files locally. Two opt-in settings use the network:
+
+| Setting | Sends | Default |
+|---|---|---|
+| `endpointSecurity.extensionScan.marketplaceLookup` | the identifiers of your installed extensions, to the VS Marketplace | off |
+| `endpointSecurity.extensionScan.updateKnownBadList` | nothing (downloads the public list from GitHub weekly) | off |
+
+With both off, the scan uses the list bundled with this version. **Update Known-Bad Extension List** refreshes it on demand.
+
+Other settings:
+- `extensionScan.includeBuiltin`: also scan VS Code's own extensions (default off).
+- `includeNodeModules`: also scan dependencies (default on).
+- `maxFileSizeMB`: largest file scanned (default 10).
+- `maxFilesPerExtension`: file limit per extension (default 2000).
+- `trustedPublishers`: add your organisation's publisher ids.
+
 ## Sources
 
 - [Microsoft — Windows Filtering Platform](https://learn.microsoft.com/en-us/windows/win32/fwp/windows-filtering-platform-start-page)
@@ -64,3 +107,5 @@ Rules can be single-event `match`, `threshold` (count within a time window) or `
 - [PCI DSS v4.0.1](https://www.pcisecuritystandards.org/document_library/)
 - [ISC2 CCSP Exam Outline (Domain 2: Cloud Data Security)](https://www.isc2.org/certifications/ccsp/ccsp-certification-exam-outline)
 - [MITRE ATT&CK](https://attack.mitre.org/)
+- [VS Code — Extension runtime security](https://code.visualstudio.com/docs/configure/extensions/extension-runtime-security)
+- [microsoft/vsmarketplace — Removed extensions](https://github.com/microsoft/vsmarketplace/blob/main/RemovedPackages.md)
