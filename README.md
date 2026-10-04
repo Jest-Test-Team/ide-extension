@@ -21,10 +21,10 @@ Shared code lives in [`packages/core`](packages/core): a web-tree-sitter host, t
 Build the packages with `npm install && npm run package`, then install them. Install the three extensions first and the pack last: the pack refers to the others by Marketplace ID, so on its own it would try to download them from the Marketplace.
 
 ```bash
-code --install-extension vsix/endpoint-security-0.3.1.vsix
-code --install-extension vsix/julia-profiler-0.2.1.vsix
-code --install-extension vsix/hw-security-0.2.1.vsix
-code --install-extension vsix/security-pack-0.2.1.vsix   # optional
+code --install-extension vsix/endpoint-security-0.3.2.vsix
+code --install-extension vsix/julia-profiler-0.2.2.vsix
+code --install-extension vsix/hw-security-0.2.2.vsix
+code --install-extension vsix/security-pack-0.2.2.vsix   # optional
 ```
 
 You can also use the Extensions view → `…` → **Install from VSIX…**.
@@ -299,10 +299,10 @@ jobs:
 先執行 `npm install && npm run package` 產生安裝檔，再進行安裝。請先安裝三個擴充套件，最後才裝 Pack：Pack 以 Marketplace ID 引用其他三個套件，若單獨安裝，它會嘗試從 Marketplace 下載。
 
 ```bash
-code --install-extension vsix/endpoint-security-0.3.1.vsix
-code --install-extension vsix/julia-profiler-0.2.1.vsix
-code --install-extension vsix/hw-security-0.2.1.vsix
-code --install-extension vsix/security-pack-0.2.1.vsix   # 選用
+code --install-extension vsix/endpoint-security-0.3.2.vsix
+code --install-extension vsix/julia-profiler-0.2.2.vsix
+code --install-extension vsix/hw-security-0.2.2.vsix
+code --install-extension vsix/security-pack-0.2.2.vsix   # 選用
 ```
 
 也可以在「擴充功能」檢視中點選 `…` → **從 VSIX 安裝…**。

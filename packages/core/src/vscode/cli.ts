@@ -2,6 +2,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSy
 import { homedir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import * as vscode from 'vscode';
+import { extensionsRootOf, shimContent, shouldRefreshShim, SHIM_MARKER } from '../cliShim';
 
 /** A command-line tool bundled in an extension: shim name → script under the extension folder. */
 export interface CliSpec {
@@ -10,7 +11,6 @@ export interface CliSpec {
   script: string;
 }
 
-const MARKER = 'jest-cli-shim';
 const isWin = process.platform === 'win32';
 
 /** Default shim folder: ~/.local/bin (POSIX) or %LOCALAPPDATA%\Programs\jest-cli (Windows). */
@@ -20,37 +20,7 @@ export function defaultCliDir(): string {
 
 const shimPath = (dir: string, name: string) => join(dir, isWin ? `${name}.cmd` : name);
 
-/**
- * Shim content. It prefers `node` on PATH and otherwise runs the script with the editor's own
- * runtime (ELECTRON_RUN_AS_NODE), so no separate Node.js install is needed.
- */
-export function shimContent(extensionId: string, script: string, runtime: string, windows = isWin): string {
-  if (windows) {
-    return [
-      '@echo off',
-      `rem ${MARKER}: ${extensionId}`,
-      'where node >nul 2>nul',
-      'if %errorlevel%==0 (',
-      `  node "${script}" %*`,
-      ') else (',
-      '  set ELECTRON_RUN_AS_NODE=1',
-      `  "${runtime}" "${script}" %*`,
-      ')',
-      '',
-    ].join('\r\n');
-  }
-  const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
-  return [
-    '#!/bin/sh',
-    `# ${MARKER}: ${extensionId}`,
-    `script=${q(script)}`,
-    'if command -v node >/dev/null 2>&1; then exec node "$script" "$@"; fi',
-    `ELECTRON_RUN_AS_NODE=1 exec ${q(runtime)} "$script" "$@"`,
-    '',
-  ].join('\n');
-}
-
-const isOurs = (path: string) => existsSync(path) && readFileSync(path, 'utf8').includes(MARKER);
+const isOurs = (path: string) => existsSync(path) && readFileSync(path, 'utf8').includes(SHIM_MARKER);
 
 function writeShim(path: string, content: string): void {
   writeFileSync(path, content);
@@ -87,16 +57,27 @@ export function uninstallCli(specs: CliSpec[], dir = defaultCliDir()): string[] 
     });
 }
 
-/** After an extension update the install folder changes; silently repoint our existing shims. */
+/**
+ * After an extension update the install folder changes: repoint our existing shims. Development
+ * hosts never touch them, and a shim installed from another editor is left alone while its
+ * target still exists (see shouldRefreshShim).
+ */
 export function refreshCli(context: vscode.ExtensionContext, specs: CliSpec[], dir = defaultCliDir()): void {
+  if (context.extensionMode !== vscode.ExtensionMode.Production) {
+    return;
+  }
   for (const s of specs) {
     const path = shimPath(dir, s.name);
-    if (!isOurs(path) || !readFileSync(path, 'utf8').includes(`${MARKER}: ${context.extension.id}`)) {
+    if (!existsSync(path)) {
       continue;
     }
-    const want = shimContent(context.extension.id, join(context.extensionPath, s.script), process.execPath);
-    if (readFileSync(path, 'utf8') !== want) {
-      writeShim(path, want);
+    const script = join(context.extensionPath, s.script);
+    const content = readFileSync(path, 'utf8');
+    if (shouldRefreshShim(content, context.extension.id, script, extensionsRootOf, existsSync)) {
+      const want = shimContent(context.extension.id, script, process.execPath);
+      if (content !== want) {
+        writeShim(path, want);
+      }
     }
   }
 }

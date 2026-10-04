@@ -7,3 +7,4 @@ export * from './rules/load';
 export * from './rules/validators';
 export * from './languages';
 export * from './sarif';
+export * from './cliShim';

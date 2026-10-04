@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Fix: the installed command (`~/.local/bin/…`) is no longer repointed by development hosts or by the same extension in another editor while the existing target still exists; updates within the same editor are still picked up automatically.
+
 ## 0.2.1
 
 - Fix: `ide-ext-ignore` / `ide-ext-ignore-next-line` suppressions now work for rule ids containing `/` (all built-in rules), including those inserted by the *Suppress* quick fix.
