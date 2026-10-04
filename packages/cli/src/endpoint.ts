@@ -255,15 +255,15 @@ export function extensionBenchmark(results: readonly ExtResult[]): string[] {
   return lines;
 }
 
-export function extensionsText(io: Io, results: ExtResult[], dirs: string[]): string {
+export function extensionsText(io: Io, results: ExtResult[], dirs: string[], details = results.length <= 3): string {
   const c = (code: number, s: string) => (io.color ? `\x1b[${code}m${s}\x1b[0m` : s);
   const COLOR = { high: 31, medium: 33, low: 32 } as const;
   const lines = [`Scanned ${results.length} extension(s) in ${dirs.join(', ')}`, ''];
   for (const r of results) {
     const editor = dirs.length > 1 ? `  [${editorOf(r.ext.path)}]` : '';
     lines.push(`${c(COLOR[r.risk.level], r.risk.level.toUpperCase().padEnd(6))} ${String(r.risk.score).padStart(3)}  ${r.ext.id}@${r.ext.version}${editor}${r.risk.allowlisted ? '  (allowlisted)' : ''}`);
-    if (r.risk.level !== 'low') {
-      for (const s of r.risk.signals.slice(0, 5)) {
+    if (r.risk.level !== 'low' || details) {
+      for (const s of r.risk.signals.slice(0, details ? 20 : 5)) {
         const loc = s.locations[0];
         lines.push(`         - ${s.message}${loc ? `  ${loc.file}:${loc.finding.range.start.line + 1}` : ''}`);
       }
@@ -281,7 +281,7 @@ export function extensionsText(io: Io, results: ExtResult[], dirs: string[]): st
 const extensionsCmd: Command = {
   name: 'extensions',
   summary: 'Risk-scan installed VS Code / Cursor / VSCodium extensions on disk (heuristic, read-only)',
-  args: '[extension dirs…]',
+  args: '[extensions folders or single extension folders…]',
   flags: {
     ...REPORT_FLAGS,
     allowlist: { type: 'string', multiple: true, value: '<publisher.name[@version]>', description: 'Trust these extensions' },
@@ -289,8 +289,9 @@ const extensionsCmd: Command = {
     'node-modules': { type: 'boolean', description: 'Also scan bundled node_modules (--no-node-modules to skip)', default: true },
     'max-files': { type: 'number', description: 'Maximum JavaScript files scanned per extension', default: 2000 },
     'fail-on': { type: 'string', value: '<high|medium|none>', description: 'Exit 1 when an extension reaches this level', default: 'high' },
+    details: { type: 'boolean', description: 'List the reasons for every extension, including low risk (automatic for ≤ 3 extensions)' },
   },
-  examples: ['jest-endpoint extensions', 'jest-endpoint extensions ~/.cursor/extensions --format sarif --out ext.sarif', 'jest-endpoint extensions --allowlist ms-python.python --fail-on medium'],
+  examples: ['jest-endpoint extensions', 'jest-endpoint extensions ~/.vscode/extensions/ash-blade.postgresql-hacker-helper-1.18.0   # one extension', 'jest-endpoint extensions ~/.cursor/extensions --format sarif --out ext.sarif', 'jest-endpoint extensions --allowlist ms-python.python --fail-on medium'],
   async run({ positionals, flags }, io) {
     const format = formatOf(flags.format);
     const fail = flags['fail-on'];
@@ -315,7 +316,12 @@ const extensionsCmd: Command = {
           ? toExtensionMarkdown(results, codeRules) + '\n'
           : format === 'json'
             ? JSON.stringify(results, null, 2) + '\n'
-            : extensionsText(io, results.filter((r) => !r.ext.builtin), dirs.filter((d) => results.some((r) => r.ext.path.startsWith(d))));
+            : extensionsText(
+              io,
+              results.filter((r) => !r.ext.builtin),
+              dirs.filter((d) => results.some((r) => r.ext.path.startsWith(d))),
+              flags.details ? true : undefined,
+            );
     emit(io, text, flags.out);
     const limit = fail === 'none' ? Infinity : RANK[fail as 'high' | 'medium'];
     return results.some((r) => RANK[r.risk.level] >= limit) ? 1 : 0;

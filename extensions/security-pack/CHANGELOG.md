@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4
+
+- CLI: `jest-endpoint extensions <folder>` accepts a single extension's folder and lists the reasons for every rating (`--details`, automatic for up to 3 extensions).
+
 ## 0.2.3
 
 - `jest-security scan` is now a full audit: code findings plus the installed-extension risk scan (ranking, reasons with file:line, signal benchmark), printed as a report and written to one SARIF file with two runs.

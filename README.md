@@ -21,10 +21,10 @@ Shared code lives in [`packages/core`](packages/core): a web-tree-sitter host, t
 Build the packages with `npm install && npm run package`, then install them. Install the three extensions first and the pack last: the pack refers to the others by Marketplace ID, so on its own it would try to download them from the Marketplace.
 
 ```bash
-code --install-extension vsix/endpoint-security-0.3.3.vsix
+code --install-extension vsix/endpoint-security-0.3.4.vsix
 code --install-extension vsix/julia-profiler-0.2.3.vsix
 code --install-extension vsix/hw-security-0.2.3.vsix
-code --install-extension vsix/security-pack-0.2.3.vsix   # optional
+code --install-extension vsix/security-pack-0.2.4.vsix   # optional
 ```
 
 You can also use the Extensions view → `…` → **Install from VSIX…**.
@@ -108,6 +108,7 @@ jest-endpoint lint src/                                   # API misuse + PCI DSS
 jest-endpoint compliance services/ -f sarif -o pci.sarif  # SARIF for GitHub code scanning
 jest-endpoint simulate attack.ptree.yaml --expect lsass-access
 jest-endpoint extensions                                  # risk-scan installed VS Code / Cursor extensions
+jest-endpoint extensions ~/.vscode/extensions/<publisher.name-version>   # one extension, with every reason
 jest-hw lint firmware/ sdkconfig
 jest-hw entropy trng.bin --bits 8 --min 7.5               # NIST SP 800-90B, fails below 7.5 bits/sample
 jest-julia analyze --max-invalidated 0                    # SnoopCompile, fails on any invalidation
@@ -319,10 +320,10 @@ jobs:
 先執行 `npm install && npm run package` 產生安裝檔，再進行安裝。請先安裝三個擴充套件，最後才裝 Pack：Pack 以 Marketplace ID 引用其他三個套件，若單獨安裝，它會嘗試從 Marketplace 下載。
 
 ```bash
-code --install-extension vsix/endpoint-security-0.3.3.vsix
+code --install-extension vsix/endpoint-security-0.3.4.vsix
 code --install-extension vsix/julia-profiler-0.2.3.vsix
 code --install-extension vsix/hw-security-0.2.3.vsix
-code --install-extension vsix/security-pack-0.2.3.vsix   # 選用
+code --install-extension vsix/security-pack-0.2.4.vsix   # 選用
 ```
 
 也可以在「擴充功能」檢視中點選 `…` → **從 VSIX 安裝…**。
@@ -406,6 +407,7 @@ jest-endpoint lint src/                                   # API 誤用 + PCI DSS
 jest-endpoint compliance services/ -f sarif -o pci.sarif  # 產生 GitHub code scanning 用的 SARIF
 jest-endpoint simulate attack.ptree.yaml --expect lsass-access
 jest-endpoint extensions                                  # 掃描已安裝的 VS Code / Cursor 擴充套件風險
+jest-endpoint extensions ~/.vscode/extensions/<publisher.name-version>   # 只掃描單一擴充套件，並列出所有原因
 jest-hw lint firmware/ sdkconfig
 jest-hw entropy trng.bin --bits 8 --min 7.5               # NIST SP 800-90B，低於 7.5 位元/樣本即失敗
 jest-julia analyze --max-invalidated 0                    # SnoopCompile，出現任何失效即失敗

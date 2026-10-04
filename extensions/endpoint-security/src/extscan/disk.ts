@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { basename, isAbsolute, join, relative } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative } from 'node:path';
 import type { ExtInfo } from './manifest';
 
 interface ProfileEntry {
@@ -40,6 +40,30 @@ export function isInside(child: string, parent: string): boolean {
   return !!rel && !rel.startsWith('..') && !isAbsolute(rel);
 }
 
+function readExtension(path: string, builtin: boolean, source?: string): ExtInfo | undefined {
+  let text: string;
+  let pkg: Record<string, unknown>;
+  try {
+    text = readFileSync(join(path, 'package.json'), 'utf8');
+    pkg = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return undefined;
+  }
+  if (typeof pkg.publisher !== 'string' || typeof pkg.name !== 'string') {
+    return undefined;
+  }
+  return {
+    id: `${pkg.publisher}.${pkg.name}`,
+    version: String(pkg.version ?? '0.0.0'),
+    displayName: typeof pkg.displayName === 'string' ? pkg.displayName : undefined,
+    path,
+    packageJSON: pkg,
+    packageJsonText: text,
+    builtin,
+    source,
+  };
+}
+
 /**
  * Folders VS Code considers installed: those listed in `extensions.json`, else every folder not
  * marked in `.obsolete` (old versions awaiting cleanup). Undefined = no metadata, take all.
@@ -73,6 +97,11 @@ export function readExtensionsDir(dir: string, opts: { builtin?: boolean } = {})
   if (!existsSync(dir)) {
     return [];
   }
+  // A single extension's own folder (it has a package.json with publisher and name).
+  const single = readExtension(dir, opts.builtin ?? false, installSources(dirname(dir), new Map()).get(basename(dir)));
+  if (single) {
+    return [single];
+  }
   const cache = new Map<string, Map<string, string>>();
   const active = activeFolders(dir);
   const out: ExtInfo[] = [];
@@ -80,28 +109,10 @@ export function readExtensionsDir(dir: string, opts: { builtin?: boolean } = {})
     if (!entry.isDirectory() || entry.name.startsWith('.') || (active && !active.has(entry.name))) {
       continue;
     }
-    const path = join(dir, entry.name);
-    let text: string;
-    let pkg: Record<string, unknown>;
-    try {
-      text = readFileSync(join(path, 'package.json'), 'utf8');
-      pkg = JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      continue;
+    const ext = readExtension(join(dir, entry.name), opts.builtin ?? false, installSources(dir, cache).get(entry.name));
+    if (ext) {
+      out.push(ext);
     }
-    if (typeof pkg.publisher !== 'string' || typeof pkg.name !== 'string') {
-      continue;
-    }
-    out.push({
-      id: `${pkg.publisher}.${pkg.name}`,
-      version: String(pkg.version ?? '0.0.0'),
-      displayName: typeof pkg.displayName === 'string' ? pkg.displayName : undefined,
-      path,
-      packageJSON: pkg,
-      packageJsonText: text,
-      builtin: opts.builtin ?? false,
-      source: installSources(dir, cache).get(entry.name),
-    });
   }
   return out.sort((a, b) => a.id.localeCompare(b.id));
 }

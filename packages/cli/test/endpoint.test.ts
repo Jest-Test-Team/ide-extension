@@ -83,6 +83,13 @@ describe('jest-endpoint', () => {
     expect(miss.stderr()).toContain('FwpmEngineOpen0');
   });
 
+  it('scans a single extension folder with details', async () => {
+    const io = captureIo(FX);
+    expect(await main(['extensions', 'extensions/benign-lsp'], io)).toBe(0);
+    expect(io.stdout()).toContain('Scanned 1 extension(s)');
+    expect(io.stdout()).toMatch(/^LOW .*\n\s+- /m); // reasons are listed even for low risk
+  });
+
   it('risk-scans an extensions folder', async () => {
     const io = captureIo(FX);
     expect(await main(['extensions', 'extensions'], io)).toBe(1);

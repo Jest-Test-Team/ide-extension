@@ -2,7 +2,7 @@
   "name": "security-pack",
   "displayName": "Security & Systems Engineering Pack",
   "description": "Installs the Endpoint Security, Julia Profiler and Embedded Hardware Security extensions together.",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "publisher": "jest-test-team",
   "license": "MIT",
   "icon": "icon.png",
