@@ -2,8 +2,10 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import * as vscode from 'vscode';
 import { parseRemovedPackages, REMOVED_PACKAGES_URL, toSnapshot } from './knownBad';
+import { lookupMarketplace, marketplaceSignals } from './marketplace';
 import { toExtensionMarkdown, toExtensionSarif } from './report';
-import { ExtensionScanner, type ExtResult } from './scanner';
+import { ExtensionScanner, type ExtResult, type SignalProvider } from './scanner';
+import type { Signal } from './signals';
 import { ExtScanTreeProvider, type ExtScanItem } from './tree';
 
 const SECTION = 'endpointSecurity.extensionScan';
@@ -45,8 +47,33 @@ async function knownBadIsStale(scanner: ExtensionScanner): Promise<boolean> {
   }
 }
 
+/**
+ * Opt-in reputation lookup. Only runs when `marketplaceLookup` is on, because it sends the
+ * identifiers of the installed (non-built-in) extensions to the VS Marketplace.
+ */
+function marketplaceProvider(output: vscode.OutputChannel): SignalProvider {
+  return async (exts, token) => {
+    const out = new Map<string, Signal[]>();
+    if (!vscode.workspace.getConfiguration(SECTION).get<boolean>('marketplaceLookup', false)) {
+      return out;
+    }
+    const ids = exts.filter((e) => !e.builtin).map((e) => e.id.toLowerCase());
+    const abort = new AbortController();
+    const sub = token.onCancellationRequested(() => abort.abort());
+    try {
+      const infos = await lookupMarketplace(ids, { signal: abort.signal });
+      infos.forEach((info, id) => out.set(id, marketplaceSignals(info)));
+      output.appendLine(`[extensions] Marketplace lookup: ${ids.length} identifier(s) sent, ${[...infos.values()].filter((i) => i.found).length} found`);
+    } finally {
+      sub.dispose();
+    }
+    return out;
+  };
+}
+
 export function registerExtensionScan(context: vscode.ExtensionContext, output: vscode.OutputChannel): ExtensionScanner {
   const scanner = new ExtensionScanner(context, output);
+  scanner.extraSignals = marketplaceProvider(output);
   const tree = new ExtScanTreeProvider(scanner);
   const view = vscode.window.createTreeView('endpointSecurity.extensions', { treeDataProvider: tree, showCollapseAll: true });
   const config = () => vscode.workspace.getConfiguration(SECTION);

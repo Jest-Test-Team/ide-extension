@@ -1,0 +1,73 @@
+{
+ "$comment": "Recorded VS Marketplace extensionquery response (2026-10-04), trimmed to the fields the scanner reads.",
+ "results": [
+  {
+   "extensions": [
+    {
+     "publisher": {
+      "publisherId": "998b010b-e2af-44a5-a6cd-0b5fd3b9b6f8",
+      "publisherName": "ms-python",
+      "displayName": "Microsoft",
+      "flags": "verified",
+      "domain": "https://microsoft.com",
+      "isDomainVerified": true
+     },
+     "extensionId": "f1f59ae4-9318-4f3c-a9b5-81b2eaa5f8a5",
+     "extensionName": "python",
+     "displayName": "Python",
+     "flags": "validated, public",
+     "lastUpdated": "2026-10-02T13:54:58.87Z",
+     "publishedDate": "2016-01-19T15:03:11.337Z",
+     "statistics": [
+      {
+       "statisticName": "install",
+       "value": 239537100.0
+      },
+      {
+       "statisticName": "averagerating",
+       "value": 4.204761981964111
+      }
+     ]
+    },
+    {
+     "publisher": {
+      "publisherId": "27977793-9e84-451b-8977-744ce63f3d70",
+      "publisherName": "WakaTime",
+      "displayName": "WakaTime",
+      "flags": "verified",
+      "domain": "https://wakatime.com",
+      "isDomainVerified": true
+     },
+     "extensionId": "f2fd462f-f1bd-4c62-b54f-59a4e5ffc6a3",
+     "extensionName": "vscode-wakatime",
+     "displayName": "WakaTime",
+     "flags": "validated, public",
+     "lastUpdated": "2026-06-12T14:54:20.693Z",
+     "publishedDate": "2015-11-17T07:37:07.957Z",
+     "statistics": [
+      {
+       "statisticName": "install",
+       "value": 23097261.0
+      },
+      {
+       "statisticName": "averagerating",
+       "value": 4.069767475128174
+      }
+     ]
+    }
+   ],
+   "pagingToken": null,
+   "resultMetadata": [
+    {
+     "metadataType": "ResultCount",
+     "metadataItems": [
+      {
+       "name": "TotalCount",
+       "count": 2
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

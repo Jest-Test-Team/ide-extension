@@ -202,6 +202,11 @@
           "type": "boolean",
           "default": false,
           "markdownDescription": "Before a scan, download Microsoft's [list of removed extensions](https://github.com/microsoft/vsmarketplace/blob/main/RemovedPackages.md) when the local copy is older than a week. Downloads a public file from GitHub; sends nothing about your extensions. Off: the copy bundled with this version is used."
+        },
+        "endpointSecurity.extensionScan.marketplaceLookup": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "**Sends the identifiers of your installed extensions to Microsoft** (the VS Marketplace) to check publisher verification, install counts and last update. Off by default; everything else in the scan is local."
         }
       }
     },

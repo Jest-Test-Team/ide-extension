@@ -50,6 +50,34 @@ suite('installed extension scan', () => {
     assert.match(md, /\| Extension \| Version \| Risk \| Score \| Main reasons \|/);
   });
 
+  test('makes no network request unless the Marketplace lookup is opted in', async () => {
+    // The test runs in the extension host, so stubbing fetch here also covers the extension. Other
+    // built-in extensions share the host (e.g. the experiments service), so only the endpoints this
+    // scanner can contact are counted.
+    const ours = /^https:\/\/(marketplace\.visualstudio\.com|raw\.githubusercontent\.com)\//;
+    const cfg = () => vscode.workspace.getConfiguration('endpointSecurity.extensionScan');
+    const original = globalThis.fetch;
+    const requested: string[] = [];
+    globalThis.fetch = ((input: string | URL | Request) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (ours.test(url)) {
+        requested.push(url);
+      }
+      return Promise.reject(new Error('network disabled in test'));
+    }) as typeof fetch;
+    try {
+      await vscode.commands.executeCommand('endpointSecurity.scanExtensions', { force: true });
+      assert.deepStrictEqual(requested, [], 'no request with the defaults');
+      // Positive control: the stub does see the extension's requests once the user opts in.
+      await cfg().update('marketplaceLookup', true, vscode.ConfigurationTarget.Global);
+      await vscode.commands.executeCommand('endpointSecurity.scanExtensions');
+      assert.deepStrictEqual(requested, ['https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery']);
+    } finally {
+      globalThis.fetch = original;
+      await cfg().update('marketplaceLookup', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
   test('allowlisting zeroes the score and is undone again', async () => {
     const cfg = () => vscode.workspace.getConfiguration('endpointSecurity.extensionScan');
     await cfg().update('allowlist', ['jest-test-team.endpoint-security'], vscode.ConfigurationTarget.Global);
