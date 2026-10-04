@@ -7,7 +7,8 @@ Three VS Code extensions for security and systems engineering, plus an extension
 | **Endpoint Security & Compliance Toolkit** | [`extensions/endpoint-security`](extensions/endpoint-security/README.md) | WFP / ETW / Endpoint Security API hover + validation, PCI DSS 4.0.1 & CCSP D2 compliance scan with SARIF export, process-tree detection simulation, risk scan of installed VS Code extensions |
 | **Julia Invalidation & Compiler Profiler** | [`extensions/julia-profiler`](extensions/julia-profiler/README.md) | SnoopCompile.jl invalidation tree & inference flame graph, invalidation linter, benchmark judge vs. git baseline |
 | **Embedded Hardware Security Workbench** | [`extensions/hw-security`](extensions/hw-security/README.md) | ESP32/ESPHome security linter, NIST SP 800-90B entropy & restart tests, PUF metrics, ChipWhisperer side-channel tags |
-| Security & Systems Engineering Pack | `extensions/security-pack` | Installs all three |
+| Security & Systems Engineering Pack | `extensions/security-pack` | Installs all three; `jest-security` CLI |
+| Command-line tools | [`packages/cli`](packages/cli/README.md) | `jest-endpoint`, `jest-hw` (`jest-embedded`), `jest-julia`, `jest-security` — npm package `@jest-test-team/security-cli` |
 
 Shared code lives in [`packages/core`](packages/core): a web-tree-sitter host, the declarative rule engine (tree-sitter queries, regex/absent rules and code rules — every rule cites its sources), diagnostics with quick fixes and suppressions, SARIF/Markdown reports, and webview helpers. Each extension bundles it with esbuild.
 
@@ -20,10 +21,10 @@ Shared code lives in [`packages/core`](packages/core): a web-tree-sitter host, t
 Build the packages with `npm install && npm run package`, then install them. Install the three extensions first and the pack last: the pack refers to the others by Marketplace ID, so on its own it would try to download them from the Marketplace.
 
 ```bash
-code --install-extension vsix/endpoint-security-0.2.0.vsix
-code --install-extension vsix/julia-profiler-0.1.0.vsix
-code --install-extension vsix/hw-security-0.1.0.vsix
-code --install-extension vsix/security-pack-0.1.0.vsix   # optional
+code --install-extension vsix/endpoint-security-0.3.0.vsix
+code --install-extension vsix/julia-profiler-0.2.0.vsix
+code --install-extension vsix/hw-security-0.2.0.vsix
+code --install-extension vsix/security-pack-0.2.0.vsix   # optional
 ```
 
 You can also use the Extensions view → `…` → **Install from VSIX…**.
@@ -83,6 +84,42 @@ Open **⌘,** and search `endpointSecurity`, `hwSecurity` or `juliaProfiler` to:
 
 Each extension's **Details** tab in the Extensions view contains its full documentation.
 
+### Command-line tools
+
+Every extension also works from a terminal or CI pipeline:
+
+| Command | Extension | Commands |
+|---|---|---|
+| `jest-endpoint` | Endpoint Security & Compliance Toolkit | `lint`, `compliance`, `simulate`, `api`, `agent`, `extensions` |
+| `jest-hw` (alias `jest-embedded`) | Embedded Hardware Security Workbench | `lint`, `entropy`, `restart`, `puf`, `sca` |
+| `jest-julia` | Julia Invalidation & Compiler Profiler | `lint`, `analyze`, `report`, `bench`, `init` |
+| `jest-security` | Security & Systems Engineering Pack | `lint`, `scan`, `doctor`, plus `endpoint` / `hw` / `julia …` |
+
+**Get them** in one of two ways:
+- **From VS Code** (no Node.js needed): **⌘⇧P → Install '<tool>' Command in PATH**, e.g. *Endpoint Security: Install 'jest-endpoint' Command in PATH*.
+  - The command goes into `~/.local/bin` (Windows: `%LOCALAPPDATA%\Programs\jest-cli`). If that folder isn't on your PATH, VS Code shows the line to add.
+  - The pack's command installs `jest-security`.
+- **From npm:** `npm i -g @jest-test-team/security-cli` installs all five commands. From this repo: `npm run build -w @jest-test-team/security-cli`, then `node packages/cli/dist/jest-security.js`.
+
+**Examples:**
+
+```bash
+jest-endpoint lint src/                                   # API misuse + PCI DSS / CCSP findings
+jest-endpoint compliance services/ -f sarif -o pci.sarif  # SARIF for GitHub code scanning
+jest-endpoint simulate attack.ptree.yaml --expect lsass-access
+jest-endpoint extensions                                  # risk-scan installed VS Code / Cursor extensions
+jest-hw lint firmware/ sdkconfig
+jest-hw entropy trng.bin --bits 8 --min 7.5               # NIST SP 800-90B, fails below 7.5 bits/sample
+jest-julia analyze --max-invalidated 0                    # SnoopCompile, fails on any invalidation
+jest-julia bench --baseline main                          # fails on benchmark regressions
+jest-security scan . -o security.sarif                    # every rule set, one SARIF file
+```
+
+**Output:**
+- Every command has `--help`, and the lint-style commands support `--format text|json|sarif|md` and `--out`.
+- **Exit codes:** `0` clean, `1` findings at or above `--fail-on` (or a failed test / threshold), `2` usage or runtime error. This makes the commands CI gates.
+- Full reference: [`packages/cli/README.md`](packages/cli/README.md).
+
 ## 安裝與使用
 
 ### 安裝
@@ -90,10 +127,10 @@ Each extension's **Details** tab in the Extensions view contains its full docume
 先執行 `npm install && npm run package` 產生安裝檔，再進行安裝。請先安裝三個擴充套件，最後才裝 Pack：Pack 以 Marketplace ID 引用其他三個套件，若單獨安裝，它會嘗試從 Marketplace 下載。
 
 ```bash
-code --install-extension vsix/endpoint-security-0.2.0.vsix
-code --install-extension vsix/julia-profiler-0.1.0.vsix
-code --install-extension vsix/hw-security-0.1.0.vsix
-code --install-extension vsix/security-pack-0.1.0.vsix   # 選用
+code --install-extension vsix/endpoint-security-0.3.0.vsix
+code --install-extension vsix/julia-profiler-0.2.0.vsix
+code --install-extension vsix/hw-security-0.2.0.vsix
+code --install-extension vsix/security-pack-0.2.0.vsix   # 選用
 ```
 
 也可以在「擴充功能」檢視中點選 `…` → **從 VSIX 安裝…**。
@@ -153,6 +190,42 @@ code --install-extension vsix/security-pack-0.1.0.vsix   # 選用
 
 在「擴充功能」檢視中點選各擴充套件的 **Details** 分頁，可查看完整文件。
 
+### 命令列工具
+
+每個擴充套件也能在終端機或 CI 流程中使用：
+
+| 指令 | 擴充套件 | 子命令 |
+|---|---|---|
+| `jest-endpoint` | 端點安全與合規工具組 | `lint`、`compliance`、`simulate`、`api`、`agent`、`extensions` |
+| `jest-hw`（別名 `jest-embedded`） | 嵌入式硬體安全工作台 | `lint`、`entropy`、`restart`、`puf`、`sca` |
+| `jest-julia` | Julia 失效與編譯分析器 | `lint`、`analyze`、`report`、`bench`、`init` |
+| `jest-security` | 安全與系統工程套件包 | `lint`、`scan`、`doctor`，以及 `endpoint` / `hw` / `julia …` |
+
+**取得方式**（擇一）：
+- **從 VS Code 安裝**（不需要 Node.js）：**⌘⇧P → Install '<tool>' Command in PATH**，例如 *Endpoint Security: Install 'jest-endpoint' Command in PATH*。
+  - 指令會安裝到 `~/.local/bin`（Windows：`%LOCALAPPDATA%\Programs\jest-cli`）。若該資料夾不在 PATH 中，VS Code 會顯示需要加入的設定。
+  - Pack 的命令會安裝 `jest-security`。
+- **從 npm 安裝**：`npm i -g @jest-test-team/security-cli` 會一次安裝全部五個指令。在本 repo 中：先執行 `npm run build -w @jest-test-team/security-cli`，再執行 `node packages/cli/dist/jest-security.js`。
+
+**範例：**
+
+```bash
+jest-endpoint lint src/                                   # API 誤用 + PCI DSS / CCSP 問題
+jest-endpoint compliance services/ -f sarif -o pci.sarif  # 產生 GitHub code scanning 用的 SARIF
+jest-endpoint simulate attack.ptree.yaml --expect lsass-access
+jest-endpoint extensions                                  # 掃描已安裝的 VS Code / Cursor 擴充套件風險
+jest-hw lint firmware/ sdkconfig
+jest-hw entropy trng.bin --bits 8 --min 7.5               # NIST SP 800-90B，低於 7.5 位元/樣本即失敗
+jest-julia analyze --max-invalidated 0                    # SnoopCompile，出現任何失效即失敗
+jest-julia bench --baseline main                          # 效能退步時失敗
+jest-security scan . -o security.sarif                    # 所有規則，輸出單一 SARIF 檔
+```
+
+**輸出：**
+- 每個指令都支援 `--help`；檢查類命令支援 `--format text|json|sarif|md` 與 `--out`。
+- **結束碼**：`0` 無問題；`1` 有達到 `--fail-on` 門檻的問題（或測試、門檻未通過）；`2` 用法或執行錯誤。因此可直接作為 CI 關卡。
+- 完整說明：[`packages/cli/README.md`](packages/cli/README.md)。
+
 ## Development
 
 ```bash
@@ -184,3 +257,5 @@ The committed NIST reference values come from [usnistgov/SP800-90B_EntropyAssess
 4. Bump versions and changelogs, then tag the release: `git tag v0.1.0 && git push --tags`. [`release.yml`](.github/workflows/release.yml) tests, packages and publishes the extensions in dependency order, and attaches the `.vsix` files to a GitHub release.
 
 To publish manually instead, run `npx vsce login jest-test-team`, then `npm run package`, then `npx vsce publish --packagePath vsix/<file>.vsix`.
+
+**CLI on npm:** create the npm organisation `jest-test-team`, or rename the package in `packages/cli/package.json`. Then add an automation token as the `NPM_TOKEN` secret, and `release.yml` will also publish `@jest-test-team/security-cli`. To publish by hand, run `npm publish -w @jest-test-team/security-cli --access public`.

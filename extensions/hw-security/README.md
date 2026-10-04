@@ -47,6 +47,24 @@ attack = cwa.cpa(project, cwa.leakage_models.sbox_output)
 - Diagnostics flag duplicate ids and references without a tag.
 - Hints suggest tags for untagged secret-indexed table lookups, secret-dependent branches and early-exit `memcmp` of MACs in crypto functions.
 
+## Command line
+
+The same features are available as `jest-hw` (alias `jest-embedded`), for terminals and CI pipelines:
+- **Install from VS Code:** **HW Security: Install 'jest-hw' Command in PATH**. It needs no Node.js.
+- **Install from npm:** `npm i -g @jest-test-team/security-cli`.
+
+```bash
+jest-hw lint firmware/ sdkconfig esphome/
+jest-hw entropy trng.bin --bits 8 --min 7.5
+jest-hw restart restarts.bin --hi 7 --bits 8
+jest-hw puf sram.csv --ecc-bits 255 --target 1e-9
+jest-hw sca firmware/ analysis/                  # exit 1 on orphan / duplicate tags
+```
+
+- Reports: `--format text|json|sarif|md`.
+- Exit codes: `1` on findings or a failed check, so the commands work as CI gates.
+- Options: see `jest-hw <command> --help`.
+
 ## Sources
 
 - [Espressif — ESP-IDF Security](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/security.html)

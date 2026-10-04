@@ -99,6 +99,25 @@ Other settings:
 - `maxFilesPerExtension`: file limit per extension (default 2000).
 - `trustedPublishers`: add your organisation's publisher ids.
 
+## Command line
+
+The same features are available as `jest-endpoint`, for terminals and CI pipelines:
+- **Install from VS Code:** **Endpoint Security: Install 'jest-endpoint' Command in PATH**. It needs no Node.js.
+- **Install from npm:** `npm i -g @jest-test-team/security-cli`.
+
+```bash
+jest-endpoint lint src/ --only api               # WFP / ETW / Endpoint Security API checks
+jest-endpoint compliance services/ -f sarif -o pci.sarif
+jest-endpoint simulate attack.ptree.yaml --expect lsass-access   # detection regression test
+jest-endpoint api EnableTraceEx2
+jest-endpoint agent --http 8765                  # simulation agent for a sandbox VM
+jest-endpoint extensions --fail-on medium        # risk-scan installed extensions
+```
+
+- Reports: `--format text|json|sarif|md`.
+- Exit codes: `1` on findings or a failed check, so the commands work as CI gates.
+- Options: see `jest-endpoint <command> --help`.
+
 ## Sources
 
 - [Microsoft — Windows Filtering Platform](https://learn.microsoft.com/en-us/windows/win32/fwp/windows-filtering-platform-start-page)

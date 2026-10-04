@@ -47,6 +47,25 @@ When a profile is loaded, **runtime-backed diagnostics** mark the exact methods 
 | `juliaProfiler.invalidationThreshold` | `10` | recorded invalidations at or above this are warnings |
 | `juliaProfiler.benchmark.seconds` / `benchmark.timeTolerance` | `1` / `0.05` | benchmark budget and judge tolerance |
 
+## Command line
+
+The same features are available as `jest-julia`, for terminals and CI pipelines:
+- **Install from VS Code:** **Julia Profiler: Install 'jest-julia' Command in PATH**. It needs no Node.js.
+- **Install from npm:** `npm i -g @jest-test-team/security-cli`.
+
+```bash
+jest-julia lint src/
+jest-julia analyze --out profile.json --max-invalidated 0
+jest-julia report profile.json
+jest-julia lint src/ --profile profile.json     # add recorded invalidations / triggers
+jest-julia bench --baseline main               # exit 1 on regressions
+jest-julia init bench
+```
+
+- Reports: `--format text|json|sarif|md`.
+- Exit codes: `1` on findings or a failed check, so the commands work as CI gates.
+- Options: see `jest-julia <command> --help`.
+
 ## Sources
 
 - [Julia manual — Performance Tips](https://docs.julialang.org/en/v1/manual/performance-tips/)

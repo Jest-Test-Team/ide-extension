@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- Command-line tool `jest-endpoint`: the extension's features in a terminal or CI (text / JSON / SARIF / Markdown output, CI-friendly exit codes). Bundled in the extension — **Install '…' Command in PATH** — and published as `@jest-test-team/security-cli` on npm.
+
 ## 0.2.0
 
 - **Installed extension risk scan:** a new *Installed Extensions* view (shield icon) that scores every installed extension low / medium / high and lists the reasons.
