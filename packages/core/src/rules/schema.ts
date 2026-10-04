@@ -43,13 +43,14 @@ export interface QueryRule extends RuleBase {
   /**
    * One query for every grammar, or a query per grammar id. A query may hold several top-level
    * patterns. Note: web-tree-sitter does not apply text predicates (`#eq?`, `#match?`) inside
-   * `[...]` alternations, so write alternatives as separate top-level patterns instead.
+   * `[...]` alternations, so write alternatives as separate top-level patterns instead. Predicates
+   * are JavaScript regular expressions (no inline `(?i)`); use `where` with `flags` for that.
    */
   query: string | Partial<Record<GrammarId, string>>;
   /** Capture whose node is reported. Defaults to `match`, else the first capture. */
   capture?: string;
   /** Extra regex constraints on capture text, applied after the query's own predicates. */
-  where?: Record<string, { matches?: string; notMatches?: string }>;
+  where?: Record<string, { matches?: string; notMatches?: string; flags?: string }>;
 }
 
 /** Line-oriented text rule, for files without a grammar (sdkconfig, YAML) or simple literals. */

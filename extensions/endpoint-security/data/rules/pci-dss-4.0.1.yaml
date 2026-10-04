@@ -1,0 +1,154 @@
+# PCI DSS v4.0.1 — static checks for payment / SIEM / SOAR back-end code (Go, TypeScript, JavaScript).
+# Requirement numbers refer to PCI DSS v4.0.1 (June 2024).
+id: pci-dss-4.0.1
+title: PCI DSS v4.0.1
+version: "4.0.1"
+refs:
+  - label: PCI DSS v4.0.1 (PCI SSC document library)
+    url: https://www.pcisecuritystandards.org/document_library/
+rules:
+  - id: pci/tls-verification-disabled
+    title: TLS certificate verification disabled
+    description: Disabling certificate verification removes the protection strong cryptography provides for cardholder data in transit (man-in-the-middle).
+    severity: error
+    languages: [go, typescript, javascript, typescriptreact, javascriptreact]
+    tags: [pci-4.2.1]
+    message: "Certificate verification is disabled (`{{match}}`). PCI DSS 4.2.1 requires strong cryptography with trusted certificates for PAN in transit."
+    refs:
+      - label: "PCI DSS 4.2.1 — strong cryptography for PAN transmission over open, public networks"
+        url: https://www.pcisecuritystandards.org/document_library/
+      - label: "CWE-295: Improper Certificate Validation"
+        url: https://cwe.mitre.org/data/definitions/295.html
+    query:
+      go: '((keyed_element (literal_element (identifier) @_k) (literal_element (true) @match)) (#eq? @_k "InsecureSkipVerify"))'
+      typescript: '((pair key: (property_identifier) @_k value: (false) @match) (#eq? @_k "rejectUnauthorized"))'
+      tsx: '((pair key: (property_identifier) @_k value: (false) @match) (#eq? @_k "rejectUnauthorized"))'
+
+  - id: pci/node-tls-reject-disabled
+    kind: pattern
+    title: NODE_TLS_REJECT_UNAUTHORIZED=0
+    severity: error
+    languages: [typescript, javascript, typescriptreact, javascriptreact]
+    tags: [pci-4.2.1]
+    message: "Setting NODE_TLS_REJECT_UNAUTHORIZED to 0 disables certificate verification for the whole process (PCI DSS 4.2.1)."
+    refs:
+      - label: "PCI DSS 4.2.1"
+        url: https://www.pcisecuritystandards.org/document_library/
+    pattern: "NODE_TLS_REJECT_UNAUTHORIZED['\"]?\\]?\\s*=\\s*['\"]?0"
+
+  - id: pci/weak-tls-version
+    title: TLS below 1.2 allowed
+    description: TLS 1.0/1.1 and SSL are not considered strong cryptography.
+    severity: error
+    languages: [go, typescript, javascript, typescriptreact, javascriptreact]
+    tags: [pci-4.2.1]
+    message: "`{{match}}` allows a protocol below TLS 1.2 (PCI DSS 4.2.1)."
+    refs:
+      - label: "PCI DSS 4.2.1"
+        url: https://www.pcisecuritystandards.org/document_library/
+      - label: "NIST SP 800-52 Rev. 2 — TLS guidelines"
+        url: https://csrc.nist.gov/pubs/sp/800/52/r2/final
+    query:
+      go: '((keyed_element (literal_element (identifier) @_k) (literal_element (selector_expression field: (field_identifier) @match))) (#match? @_k "^(MinVersion|MaxVersion)$") (#match? @match "^Version(SSL30|TLS10|TLS11)$"))'
+      typescript: '((pair key: (property_identifier) @_k value: (string) @match) (#match? @_k "^(minVersion|maxVersion|secureProtocol)$") (#match? @match "TLSv1(\\.1)?[^.\\d]|TLSv1_(1_)?method|SSLv(2|3|23)_method"))'
+      tsx: '((pair key: (property_identifier) @_k value: (string) @match) (#match? @_k "^(minVersion|maxVersion|secureProtocol)$") (#match? @match "TLSv1(\\.1)?[^.\\d]|TLSv1_(1_)?method|SSLv(2|3|23)_method"))'
+
+  - id: pci/cleartext-http
+    kind: pattern
+    title: Cleartext HTTP endpoint
+    severity: warning
+    languages: [go, typescript, javascript, typescriptreact, javascriptreact]
+    tags: [pci-4.2.1]
+    message: "`{{value}}` is plain HTTP; cardholder data must only travel over strong cryptography (PCI DSS 4.2.1)."
+    refs:
+      - label: "PCI DSS 4.2.1"
+        url: https://www.pcisecuritystandards.org/document_library/
+      - label: "CWE-319: Cleartext Transmission of Sensitive Information"
+        url: https://cwe.mitre.org/data/definitions/319.html
+    pattern: "[\"'`](?<value>http://(?!localhost\\b|127\\.0\\.0\\.1|0\\.0\\.0\\.0|\\[::1\\]|example\\.(?:com|org|net)|[\\w.-]*\\.(?:local|internal|test)\\b|www\\.w3\\.org|schemas\\.)[^\\s\"'`]+)"
+
+  - id: pci/weak-crypto
+    title: Weak hash or cipher
+    description: MD5, SHA-1, DES/3DES, RC4, Blowfish and ECB mode are not strong cryptography for protecting stored or transmitted account data.
+    severity: warning
+    languages: [go, typescript, javascript, typescriptreact, javascriptreact]
+    tags: [pci-3.5.1, pci-4.2.1]
+    where:
+      match:
+        matches: "md5|sha1|(^|[^a-z])des|rc4|-ecb|^.bf|blowfish"
+        flags: i
+    message: "`{{match}}` uses a weak algorithm; use SHA-256+/HMAC, AES-GCM or ChaCha20-Poly1305 (PCI DSS 3.5.1, 4.2.1)."
+    refs:
+      - label: "PCI DSS 3.5.1 / 4.2.1 and the PCI DSS Glossary definition of strong cryptography"
+        url: https://www.pcisecuritystandards.org/document_library/
+      - label: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+        url: https://cwe.mitre.org/data/definitions/327.html
+    query:
+      go: '((call_expression function: (selector_expression operand: (identifier) @_pkg field: (field_identifier) @_f)) @match (#match? @_pkg "^(md5|sha1|des|rc4)$") (#match? @_f "^(New|Sum|NewCipher|NewTripleDESCipher)$"))'
+      typescript: '((call_expression function: (member_expression property: (property_identifier) @_f) arguments: (arguments (string) @match)) (#match? @_f "^(createHash|createHmac|createCipheriv|createDecipheriv|createCipher)$"))'
+      tsx: '((call_expression function: (member_expression property: (property_identifier) @_f) arguments: (arguments (string) @match)) (#match? @_f "^(createHash|createHmac|createCipheriv|createDecipheriv|createCipher)$"))'
+
+  - id: pci/hardcoded-credential
+    title: Hard-coded credential
+    severity: warning
+    languages: [go, typescript, javascript, typescriptreact, javascriptreact]
+    tags: [pci-8.6.2]
+    message: "Credential-like value hard-coded in source; load it from a secrets manager (PCI DSS 8.6.2)."
+    refs:
+      - label: "PCI DSS 8.6.2 — passwords/passphrases for accounts are not hard coded"
+        url: https://www.pcisecuritystandards.org/document_library/
+      - label: "CWE-798: Use of Hard-coded Credentials"
+        url: https://cwe.mitre.org/data/definitions/798.html
+    query:
+      go: |
+        ((short_var_declaration left: (expression_list (identifier) @_n) right: (expression_list (interpreted_string_literal) @match)))
+        ((const_spec name: (identifier) @_n value: (expression_list (interpreted_string_literal) @match)))
+        ((var_spec name: (identifier) @_n value: (expression_list (interpreted_string_literal) @match)))
+        ((keyed_element (literal_element (identifier) @_n) (literal_element (interpreted_string_literal) @match)))
+      typescript: |
+        ((variable_declarator name: (identifier) @_n value: (string) @match))
+        ((pair key: (property_identifier) @_n value: (string) @match))
+      tsx: |
+        ((variable_declarator name: (identifier) @_n value: (string) @match))
+        ((pair key: (property_identifier) @_n value: (string) @match))
+    where:
+      _n:
+        matches: "(password|passwd|secret|api_?key|access_?key|token|private_?key)"
+        flags: i
+      match:
+        notMatches: "^[\"'`][\"'`]$|^[\"'`].{0,5}[\"'`]$|^[\"'`](\\$\\{|<|changeme|change-me|xxx|your[_-]|example|placeholder|dummy|test|\\*+[\"'`])"
+
+  - id: pci/pan-literal
+    kind: pattern
+    title: Primary account number in source
+    severity: warning
+    languages: [go, typescript, javascript, typescriptreact, javascriptreact, json, yaml]
+    tags: [pci-3.5.1]
+    message: "Luhn-valid card number `{{value}}` in source. PAN must be unreadable wherever stored (PCI DSS 3.5.1); use the brand's documented test PANs only in test code."
+    refs:
+      - label: "PCI DSS 3.5.1 — PAN is rendered unreadable anywhere it is stored"
+        url: https://www.pcisecuritystandards.org/document_library/
+    pattern: "(?<![\\w.])(?<value>[3-6]\\d{3}(?:[ -]?\\d{4}){2}[ -]?\\d{1,7})(?![\\w.])"
+    validate: luhn
+
+  - id: pci/sql-injection
+    title: SQL built from strings
+    severity: error
+    languages: [go, typescript, javascript, typescriptreact, javascriptreact]
+    tags: [pci-6.2.4]
+    message: "Query text is built with string formatting/concatenation; use parameterised queries (PCI DSS 6.2.4 — injection attacks)."
+    refs:
+      - label: "PCI DSS 6.2.4 — software engineering techniques prevent common attacks (injection)"
+        url: https://www.pcisecuritystandards.org/document_library/
+      - label: "CWE-89: SQL Injection"
+        url: https://cwe.mitre.org/data/definitions/89.html
+    query:
+      go: |
+        ((call_expression function: (selector_expression field: (field_identifier) @_f) arguments: (argument_list (call_expression function: (selector_expression operand: (identifier) @_p field: (field_identifier) @_s)) @match)) (#match? @_f "^(Query|QueryRow|QueryContext|QueryRowContext|Exec|ExecContext|Prepare|PrepareContext|Raw)$") (#eq? @_p "fmt") (#match? @_s "^Sprintf$"))
+        ((call_expression function: (selector_expression field: (field_identifier) @_f) arguments: (argument_list (binary_expression) @match)) (#match? @_f "^(Query|QueryRow|QueryContext|QueryRowContext|Exec|ExecContext|Prepare|PrepareContext|Raw)$"))
+      typescript: |
+        ((call_expression function: (member_expression property: (property_identifier) @_f) arguments: (arguments . (template_string (template_substitution)) @match)) (#match? @_f "^(query|execute|exec|raw|\\$queryRawUnsafe|\\$executeRawUnsafe)$"))
+        ((call_expression function: (member_expression property: (property_identifier) @_f) arguments: (arguments . (binary_expression) @match)) (#match? @_f "^(query|execute|exec|raw|\\$queryRawUnsafe|\\$executeRawUnsafe)$"))
+      tsx: |
+        ((call_expression function: (member_expression property: (property_identifier) @_f) arguments: (arguments . (template_string (template_substitution)) @match)) (#match? @_f "^(query|execute|exec|raw|\\$queryRawUnsafe|\\$executeRawUnsafe)$"))
+        ((call_expression function: (member_expression property: (property_identifier) @_f) arguments: (arguments . (binary_expression) @match)) (#match? @_f "^(query|execute|exec|raw|\\$queryRawUnsafe|\\$executeRawUnsafe)$"))

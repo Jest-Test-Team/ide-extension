@@ -1,0 +1,35 @@
+# ISC2 CCSP Domain 2 — Cloud Data Security (data lifecycle, storage, DLP, data protection in transit).
+id: ccsp-d2
+title: CCSP Domain 2 — Cloud Data Security
+refs:
+  - label: ISC2 CCSP Certification Exam Outline (Domain 2)
+    url: https://www.isc2.org/certifications/ccsp/ccsp-certification-exam-outline
+rules:
+  - id: ccsp/public-object-acl
+    kind: pattern
+    title: Publicly readable cloud object or bucket
+    severity: warning
+    languages: [go, typescript, javascript, typescriptreact, javascriptreact]
+    tags: [ccsp-d2-storage]
+    message: "`{{value}}` makes stored data world-readable; use private ACLs with bucket policies / signed URLs (CCSP Domain 2: data storage security)."
+    refs:
+      - label: "CCSP Domain 2 — implement data storage security strategies"
+        url: https://www.isc2.org/certifications/ccsp/ccsp-certification-exam-outline
+      - label: "AWS — Blocking public access to Amazon S3 storage"
+        url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html
+    pattern: "(?<value>ObjectCannedACLPublicRead(?:Write)?|BucketCannedACLPublicRead(?:Write)?|ACL['\"]?\\s*:\\s*(?:aws\\.String\\()?[\"']public-read(?:-write)?[\"'])"
+
+  - id: ccsp/sensitive-in-url
+    kind: pattern
+    title: Sensitive value in URL query string
+    severity: warning
+    languages: [go, typescript, javascript, typescriptreact, javascriptreact]
+    tags: [ccsp-d2-dlp]
+    message: "`{{value}}` puts sensitive data in a URL, where it ends up in proxy, server and browser logs (CCSP Domain 2: data loss prevention)."
+    refs:
+      - label: "CCSP Domain 2 — data loss prevention / data in transit"
+        url: https://www.isc2.org/certifications/ccsp/ccsp-certification-exam-outline
+      - label: "CWE-598: Use of GET Request Method With Sensitive Query Strings"
+        url: https://cwe.mitre.org/data/definitions/598.html
+    pattern: "[\"'`][^\"'`\\s]*[?&](?<value>(?:pan|card_?number|cardNumber|cc_?number|cvv|cvc|ssn|password|passwd|secret|api_?key|apiKey|token)=)"
+    flags: i

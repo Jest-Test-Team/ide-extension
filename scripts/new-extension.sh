@@ -8,7 +8,8 @@ cat > "$dir/tsconfig.json" <<JSON
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "types": ["node", "vscode", "mocha"] },
-  "include": ["src", "test"]
+  "include": ["src", "test"],
+  "exclude": ["test/fixtures"]
 }
 JSON
 cat > "$dir/.vscodeignore" <<IGN

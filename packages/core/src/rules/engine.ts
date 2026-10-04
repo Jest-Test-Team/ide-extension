@@ -144,8 +144,8 @@ export class RuleEngine {
     }
     const where = Object.entries(rule.where ?? {}).map(([name, c]) => ({
       name,
-      matches: c.matches ? new RegExp(c.matches) : undefined,
-      notMatches: c.notMatches ? new RegExp(c.notMatches) : undefined,
+      matches: c.matches ? new RegExp(c.matches, c.flags) : undefined,
+      notMatches: c.notMatches ? new RegExp(c.notMatches, c.flags) : undefined,
     }));
     const out: Finding[] = [];
     const seen = new Set<string>();

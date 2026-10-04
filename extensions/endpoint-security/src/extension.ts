@@ -1,13 +1,20 @@
-import { RuleEngine, type Rule } from '@ide-ext/core';
+import { RuleEngine, toMarkdownReport, toSarif, type Finding, type Rule } from '@ide-ext/core';
 import { createTreeSitterHost, DiagnosticsController, loadRulePackFiles, watchRulePackFiles } from '@ide-ext/core/vscode';
 import * as vscode from 'vscode';
 import { API_LANGUAGES, ApiCompletionProvider, ApiHoverProvider, ApiSignatureHelpProvider } from './apiProviders';
+import { join } from 'node:path';
 import { API_RULES } from './apiRules';
-
-/** Rule groups that can be toggled as a whole. */
-const RULE_GROUPS: { setting: string; rules: () => Rule[] }[] = [{ setting: 'apiRules.enable', rules: () => API_RULES }];
+import { COMPLIANCE_CUSTOM_RULES } from './complianceRules';
+import { loadBuiltInPacks, rulesOf } from './rulePacks';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  const packs = loadBuiltInPacks(join(context.extensionPath, 'dist', 'rules'));
+  const complianceRules = [...rulesOf(packs), ...COMPLIANCE_CUSTOM_RULES];
+  /** Rule groups that can be toggled as a whole. */
+  const RULE_GROUPS: { setting: string; rules: () => Rule[] }[] = [
+    { setting: 'apiRules.enable', rules: () => API_RULES },
+    { setting: 'compliance.enable', rules: () => complianceRules },
+  ];
   const output = vscode.window.createOutputChannel('Endpoint Security');
   context.subscriptions.push(output);
   const config = () => vscode.workspace.getConfiguration('endpointSecurity');
@@ -37,6 +44,45 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       );
       void vscode.window.showInformationMessage(`Endpoint Security: ${n} finding(s). See the Problems panel.`);
       return n;
+    }),
+    vscode.commands.registerCommand('endpointSecurity.exportReport', async (target?: vscode.Uri, opts?: { scan?: boolean }) => {
+      if (opts?.scan ?? true) {
+        await vscode.commands.executeCommand('endpointSecurity.scanWorkspace');
+      }
+      const isCompliance = (f: Finding) => /^(pci|ccsp)\//.test(f.ruleId);
+      const findings = new Map<string, Finding[]>();
+      for (const [uri, list] of diagnostics.allFindings()) {
+        const relevant = list.filter(isCompliance);
+        if (relevant.length) {
+          findings.set(vscode.workspace.asRelativePath(vscode.Uri.parse(uri), false), relevant);
+        }
+      }
+      const dest =
+        target ??
+        (await vscode.window.showSaveDialog({
+          defaultUri: vscode.workspace.workspaceFolders?.[0] && vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, 'compliance-report.sarif'),
+          filters: { SARIF: ['sarif'], Markdown: ['md'] },
+        }));
+      if (!dest) {
+        return undefined;
+      }
+      const version = (context.extension.packageJSON as { version: string }).version;
+      const content = dest.path.endsWith('.md')
+        ? toMarkdownReport(`Compliance report (${packs.map((p) => p.title).join(', ')})`, complianceRules, findings)
+        : JSON.stringify(
+            toSarif({
+              toolName: 'Endpoint Security & Compliance Toolkit',
+              toolVersion: version,
+              informationUri: 'https://github.com/Jest-Test-Team/ide-extension',
+              rules: complianceRules,
+              findings,
+            }),
+            null,
+            2,
+          );
+      await vscode.workspace.fs.writeFile(dest, new TextEncoder().encode(content));
+      void vscode.window.showInformationMessage(`Wrote ${vscode.workspace.asRelativePath(dest)} (${[...findings.values()].flat().length} finding(s)).`);
+      return dest;
     }),
   );
 }

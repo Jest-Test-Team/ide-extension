@@ -1,5 +1,17 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "types": ["node", "vscode", "mocha"] },
-  "include": ["src", "test"]
+  "compilerOptions": {
+    "types": [
+      "node",
+      "vscode",
+      "mocha"
+    ]
+  },
+  "include": [
+    "src",
+    "test"
+  ],
+  "exclude": [
+    "test/fixtures"
+  ]
 }
