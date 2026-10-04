@@ -2,6 +2,7 @@ import { RuleEngine, type Rule } from '@ide-ext/core';
 import { createTreeSitterHost, DiagnosticsController, openLocation, openWebview } from '@ide-ext/core/vscode';
 import * as vscode from 'vscode';
 import { analyze, createWorkload } from './analyze';
+import { createBenchmarkSuite, createBenchmarkWorkflow, runBenchmarks, type RunBenchmarksArgs } from './benchRunner';
 import { InvalidationTreeProvider } from './invalidationTree';
 import { summarize } from './profile';
 import { JULIA_RULES } from './rules';
@@ -76,6 +77,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     }),
     vscode.commands.registerCommand('juliaProfiler.clearProfile', () => store.set(undefined)),
+    vscode.commands.registerCommand('juliaProfiler.runBenchmarks', (args?: RunBenchmarksArgs) => runBenchmarks(context, output, args)),
+    vscode.commands.registerCommand('juliaProfiler.createBenchmarkSuite', () => createBenchmarkSuite()),
+    vscode.commands.registerCommand('juliaProfiler.createBenchmarkWorkflow', () => createBenchmarkWorkflow()),
   );
 
   // Static linter + findings from the loaded SnoopCompile profile.

@@ -79,6 +79,22 @@
         "command": "juliaProfiler.insertPrecompileWorkload",
         "title": "Insert PrecompileTools Workload",
         "category": "Julia Profiler"
+      },
+      {
+        "command": "juliaProfiler.runBenchmarks",
+        "title": "Run Benchmarks & Compare\u2026",
+        "category": "Julia Profiler",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "juliaProfiler.createBenchmarkSuite",
+        "title": "Create benchmark/benchmarks.jl",
+        "category": "Julia Profiler"
+      },
+      {
+        "command": "juliaProfiler.createBenchmarkWorkflow",
+        "title": "Create GitHub Actions Benchmark Workflow (AirspeedVelocity.jl)",
+        "category": "Julia Profiler"
       }
     ],
     "menus": {
@@ -109,6 +125,11 @@
           "command": "juliaProfiler.clearFilter",
           "when": "view == juliaProfiler.invalidations && juliaProfiler.filtered",
           "group": "navigation@3"
+        },
+        {
+          "command": "juliaProfiler.runBenchmarks",
+          "when": "view == juliaProfiler.invalidations",
+          "group": "navigation@4"
         }
       ],
       "commandPalette": [
@@ -165,6 +186,19 @@
           "default": 10,
           "minimum": 1,
           "description": "Recorded invalidations at or above this count are reported as warnings (below: information)."
+        },
+        "juliaProfiler.benchmark.seconds": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0.1,
+          "description": "Time budget per benchmark (BenchmarkTools `seconds`)."
+        },
+        "juliaProfiler.benchmark.timeTolerance": {
+          "type": "number",
+          "default": 0.05,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Relative median-time change treated as noise when judging (BenchmarkTools default 0.05)."
         }
       }
     },
@@ -218,7 +252,8 @@
       }
     ],
     "webEntries": {
-      "report": "src/web/report.ts"
+      "report": "src/web/report.ts",
+      "bench": "src/web/bench.ts"
     }
   }
 }
