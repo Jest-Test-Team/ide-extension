@@ -1,0 +1,386 @@
+{
+ "framework": "Event Tracing for Windows",
+ "id": "etw",
+ "docs": "https://learn.microsoft.com/en-us/windows/win32/etw/about-event-tracing",
+ "functions": [
+  {
+   "name": "StartTraceW",
+   "returns": "ULONG \u2014 ERROR_SUCCESS on success",
+   "params": [
+    {
+     "name": "TraceHandle",
+     "type": "PCONTROLTRACE_ID",
+     "doc": "Receives the session handle."
+    },
+    {
+     "name": "InstanceName",
+     "type": "LPCWSTR",
+     "doc": "Session name (KERNEL_LOGGER_NAMEW for the kernel logger)."
+    },
+    {
+     "name": "Properties",
+     "type": "PEVENT_TRACE_PROPERTIES",
+     "doc": "Must be followed by room for the logger (and log-file) name: Wnode.BufferSize = sizeof(EVENT_TRACE_PROPERTIES) + name bytes, LoggerNameOffset set."
+    }
+   ],
+   "doc": "Registers and starts an event tracing session.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntrace/nf-evntrace-starttracew",
+   "pairedWith": "ControlTraceW",
+   "notes": [
+    "Sessions outlive the process; stop them with ControlTraceW(\u2026, EVENT_TRACE_CONTROL_STOP). Windows allows only 64 concurrent sessions.",
+    "ERROR_ALREADY_EXISTS means a stale session with this name is still running."
+   ]
+  },
+  {
+   "name": "StartTraceA",
+   "returns": "ULONG",
+   "params": [
+    {
+     "name": "TraceHandle",
+     "type": "PCONTROLTRACE_ID",
+     "doc": "Receives the session handle."
+    },
+    {
+     "name": "InstanceName",
+     "type": "LPCSTR",
+     "doc": "Session name."
+    },
+    {
+     "name": "Properties",
+     "type": "PEVENT_TRACE_PROPERTIES",
+     "doc": "Session properties with room for the name."
+    }
+   ],
+   "doc": "ANSI variant of StartTraceW.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntrace/nf-evntrace-starttracea",
+   "pairedWith": "ControlTraceW"
+  },
+  {
+   "name": "ControlTraceW",
+   "returns": "ULONG",
+   "params": [
+    {
+     "name": "TraceHandle",
+     "type": "CONTROLTRACE_ID",
+     "doc": "Session handle, or 0 with InstanceName."
+    },
+    {
+     "name": "InstanceName",
+     "type": "LPCWSTR",
+     "doc": "Session name, or NULL with TraceHandle."
+    },
+    {
+     "name": "Properties",
+     "type": "PEVENT_TRACE_PROPERTIES",
+     "doc": "Receives session statistics."
+    },
+    {
+     "name": "ControlCode",
+     "type": "ULONG",
+     "doc": "EVENT_TRACE_CONTROL_STOP, _QUERY, _UPDATE or _FLUSH."
+    }
+   ],
+   "doc": "Flushes, queries, updates or stops a tracing session.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntrace/nf-evntrace-controltracew"
+  },
+  {
+   "name": "StopTraceW",
+   "returns": "ULONG",
+   "params": [
+    {
+     "name": "TraceHandle",
+     "type": "CONTROLTRACE_ID",
+     "doc": "Session handle."
+    },
+    {
+     "name": "InstanceName",
+     "type": "LPCWSTR",
+     "doc": "Session name."
+    },
+    {
+     "name": "Properties",
+     "type": "PEVENT_TRACE_PROPERTIES",
+     "doc": "Receives final statistics."
+    }
+   ],
+   "doc": "Stops a tracing session (equivalent to ControlTrace with EVENT_TRACE_CONTROL_STOP).",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntrace/nf-evntrace-stoptracew"
+  },
+  {
+   "name": "EnableTraceEx2",
+   "returns": "ULONG",
+   "params": [
+    {
+     "name": "TraceHandle",
+     "type": "CONTROLTRACE_ID",
+     "doc": "Session handle."
+    },
+    {
+     "name": "ProviderId",
+     "type": "LPCGUID",
+     "doc": "Provider GUID (e.g. Microsoft-Windows-Kernel-Process)."
+    },
+    {
+     "name": "ControlCode",
+     "type": "ULONG",
+     "doc": "EVENT_CONTROL_CODE_ENABLE_PROVIDER, _DISABLE_PROVIDER or _CAPTURE_STATE."
+    },
+    {
+     "name": "Level",
+     "type": "UCHAR",
+     "doc": "TRACE_LEVEL_CRITICAL \u2026 TRACE_LEVEL_VERBOSE."
+    },
+    {
+     "name": "MatchAnyKeyword",
+     "type": "ULONGLONG",
+     "doc": "Bitmask: events with any of these keywords."
+    },
+    {
+     "name": "MatchAllKeyword",
+     "type": "ULONGLONG",
+     "doc": "Bitmask: events must have all of these keywords."
+    },
+    {
+     "name": "Timeout",
+     "type": "ULONG",
+     "doc": "0 for asynchronous enable, else ms to wait."
+    },
+    {
+     "name": "EnableParameters",
+     "type": "PENABLE_TRACE_PARAMETERS",
+     "doc": "Filters (process id, event id, stack walk), or NULL."
+    }
+   ],
+   "doc": "Enables or disables a provider for a session.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntrace/nf-evntrace-enabletraceex2",
+   "notes": [
+    "Use precise keywords instead of 0xFFFFFFFFFFFFFFFF; broad keywords at VERBOSE flood the session and drop events."
+   ]
+  },
+  {
+   "name": "OpenTraceW",
+   "returns": "PROCESSTRACE_HANDLE \u2014 INVALID_PROCESSTRACE_HANDLE on failure",
+   "params": [
+    {
+     "name": "Logfile",
+     "type": "PEVENT_TRACE_LOGFILEW",
+     "doc": "LoggerName (real-time) or LogFileName, ProcessTraceMode = PROCESS_TRACE_MODE_REAL_TIME | PROCESS_TRACE_MODE_EVENT_RECORD, EventRecordCallback."
+    }
+   ],
+   "doc": "Opens a real-time session or log file for consumption.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntrace/nf-evntrace-opentracew",
+   "pairedWith": "CloseTrace",
+   "notes": [
+    "Failure is INVALID_PROCESSTRACE_HANDLE (not INVALID_HANDLE_VALUE or 0); call GetLastError for the reason."
+   ]
+  },
+  {
+   "name": "ProcessTrace",
+   "returns": "ULONG",
+   "params": [
+    {
+     "name": "HandleArray",
+     "type": "PPROCESSTRACE_HANDLE",
+     "doc": "Handles from OpenTrace."
+    },
+    {
+     "name": "HandleCount",
+     "type": "ULONG",
+     "doc": "Number of handles (max 64)."
+    },
+    {
+     "name": "StartTime",
+     "type": "LPFILETIME",
+     "doc": "Optional start time."
+    },
+    {
+     "name": "EndTime",
+     "type": "LPFILETIME",
+     "doc": "Optional end time."
+    }
+   ],
+   "doc": "Delivers events to the consumer callbacks; blocks until the session stops or CloseTrace is called.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntrace/nf-evntrace-processtrace",
+   "notes": [
+    "Blocks: run it on a dedicated thread. Keep EventRecordCallback fast or events are lost."
+   ]
+  },
+  {
+   "name": "CloseTrace",
+   "returns": "ULONG",
+   "params": [
+    {
+     "name": "TraceHandle",
+     "type": "PROCESSTRACE_HANDLE",
+     "doc": "Handle from OpenTrace."
+    }
+   ],
+   "doc": "Closes a trace processing handle.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntrace/nf-evntrace-closetrace"
+  },
+  {
+   "name": "EventRegister",
+   "returns": "ULONG",
+   "params": [
+    {
+     "name": "ProviderId",
+     "type": "LPCGUID",
+     "doc": "Provider GUID."
+    },
+    {
+     "name": "EnableCallback",
+     "type": "PENABLECALLBACK",
+     "doc": "Optional enable notification."
+    },
+    {
+     "name": "CallbackContext",
+     "type": "PVOID",
+     "doc": "Context for the callback."
+    },
+    {
+     "name": "RegHandle",
+     "type": "PREGHANDLE",
+     "doc": "Receives the registration handle."
+    }
+   ],
+   "doc": "Registers an ETW provider.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntprov/nf-evntprov-eventregister",
+   "pairedWith": "EventUnregister"
+  },
+  {
+   "name": "EventUnregister",
+   "returns": "ULONG",
+   "params": [
+    {
+     "name": "RegHandle",
+     "type": "REGHANDLE",
+     "doc": "Registration handle."
+    }
+   ],
+   "doc": "Unregisters an ETW provider.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntprov/nf-evntprov-eventunregister"
+  },
+  {
+   "name": "EventWrite",
+   "returns": "ULONG",
+   "params": [
+    {
+     "name": "RegHandle",
+     "type": "REGHANDLE",
+     "doc": "Registration handle."
+    },
+    {
+     "name": "EventDescriptor",
+     "type": "PCEVENT_DESCRIPTOR",
+     "doc": "Event metadata."
+    },
+    {
+     "name": "UserDataCount",
+     "type": "ULONG",
+     "doc": "Number of data descriptors."
+    },
+    {
+     "name": "UserData",
+     "type": "PEVENT_DATA_DESCRIPTOR",
+     "doc": "Event payload."
+    }
+   ],
+   "doc": "Writes an event.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/evntprov/nf-evntprov-eventwrite"
+  },
+  {
+   "name": "TdhGetEventInformation",
+   "returns": "TDHSTATUS",
+   "params": [
+    {
+     "name": "Event",
+     "type": "PEVENT_RECORD",
+     "doc": "Event from the callback."
+    },
+    {
+     "name": "TdhContextCount",
+     "type": "ULONG",
+     "doc": "Number of contexts."
+    },
+    {
+     "name": "TdhContext",
+     "type": "PTDH_CONTEXT",
+     "doc": "Optional decoding context."
+    },
+    {
+     "name": "Buffer",
+     "type": "PTRACE_EVENT_INFO",
+     "doc": "Receives metadata; may be NULL to size."
+    },
+    {
+     "name": "BufferSize",
+     "type": "PULONG",
+     "doc": "In/out size; ERROR_INSUFFICIENT_BUFFER asks for a bigger buffer."
+    }
+   ],
+   "doc": "Retrieves metadata used to decode an event.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/tdh/nf-tdh-tdhgeteventinformation",
+   "notes": [
+    "Call once to size the buffer (ERROR_INSUFFICIENT_BUFFER), allocate, then call again."
+   ]
+  }
+ ],
+ "constants": [
+  {
+   "name": "EVENT_TRACE_CONTROL_STOP",
+   "doc": "ControlTrace code: stop the session."
+  },
+  {
+   "name": "EVENT_TRACE_CONTROL_QUERY",
+   "doc": "ControlTrace code: query statistics."
+  },
+  {
+   "name": "EVENT_CONTROL_CODE_ENABLE_PROVIDER",
+   "doc": "EnableTraceEx2: enable the provider."
+  },
+  {
+   "name": "EVENT_CONTROL_CODE_DISABLE_PROVIDER",
+   "doc": "EnableTraceEx2: disable the provider."
+  },
+  {
+   "name": "EVENT_CONTROL_CODE_CAPTURE_STATE",
+   "doc": "EnableTraceEx2: request rundown events."
+  },
+  {
+   "name": "TRACE_LEVEL_CRITICAL",
+   "doc": "Level 1"
+  },
+  {
+   "name": "TRACE_LEVEL_ERROR",
+   "doc": "Level 2"
+  },
+  {
+   "name": "TRACE_LEVEL_WARNING",
+   "doc": "Level 3"
+  },
+  {
+   "name": "TRACE_LEVEL_INFORMATION",
+   "doc": "Level 4"
+  },
+  {
+   "name": "TRACE_LEVEL_VERBOSE",
+   "doc": "Level 5 \u2014 high volume; avoid in production sessions."
+  },
+  {
+   "name": "PROCESS_TRACE_MODE_REAL_TIME",
+   "doc": "OpenTrace: consume a real-time session."
+  },
+  {
+   "name": "PROCESS_TRACE_MODE_EVENT_RECORD",
+   "doc": "OpenTrace: deliver EVENT_RECORD to EventRecordCallback."
+  },
+  {
+   "name": "EVENT_TRACE_REAL_TIME_MODE",
+   "doc": "LogFileMode: deliver events in real time."
+  },
+  {
+   "name": "INVALID_PROCESSTRACE_HANDLE",
+   "doc": "OpenTrace failure value."
+  }
+ ]
+}

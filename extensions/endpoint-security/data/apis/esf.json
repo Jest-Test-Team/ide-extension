@@ -1,0 +1,458 @@
+{
+ "framework": "Apple Endpoint Security",
+ "id": "esf",
+ "docs": "https://developer.apple.com/documentation/endpointsecurity",
+ "functions": [
+  {
+   "name": "es_new_client",
+   "returns": "es_new_client_result_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t **",
+     "doc": "Receives the client."
+    },
+    {
+     "name": "handler",
+     "type": "es_handler_block_t",
+     "doc": "Block called for every message on a serial queue."
+    }
+   ],
+   "doc": "Creates a new Endpoint Security client.",
+   "url": "https://developer.apple.com/documentation/endpointsecurity",
+   "pairedWith": "es_delete_client",
+   "notes": [
+    "Requires the com.apple.developer.endpoint-security.client entitlement, root, and Full Disk Access (TCC).",
+    "Check the result: ES_NEW_CLIENT_RESULT_ERR_NOT_ENTITLED / _NOT_PERMITTED / _NOT_PRIVILEGED / _TOO_MANY_CLIENTS."
+   ]
+  },
+  {
+   "name": "es_delete_client",
+   "returns": "es_return_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t *",
+     "doc": "Client from es_new_client."
+    }
+   ],
+   "doc": "Destroys a client and frees its resources; unsubscribes from all events.",
+   "url": "https://developer.apple.com/documentation/endpointsecurity"
+  },
+  {
+   "name": "es_subscribe",
+   "returns": "es_return_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t *",
+     "doc": "Client from es_new_client."
+    },
+    {
+     "name": "events",
+     "type": "const es_event_type_t *",
+     "doc": "Event types to receive."
+    },
+    {
+     "name": "event_count",
+     "type": "uint32_t",
+     "doc": "Number of event types."
+    }
+   ],
+   "doc": "Subscribes the client to events.",
+   "url": "https://developer.apple.com/documentation/endpointsecurity",
+   "notes": [
+    "AUTH events require a response before message->deadline, or the system kills the client."
+   ]
+  },
+  {
+   "name": "es_unsubscribe",
+   "returns": "es_return_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t *",
+     "doc": "Client from es_new_client."
+    },
+    {
+     "name": "events",
+     "type": "const es_event_type_t *",
+     "doc": "Event types."
+    },
+    {
+     "name": "event_count",
+     "type": "uint32_t",
+     "doc": "Number of event types."
+    }
+   ],
+   "doc": "Unsubscribes from specific events.",
+   "url": "https://developer.apple.com/documentation/endpointsecurity"
+  },
+  {
+   "name": "es_unsubscribe_all",
+   "returns": "es_return_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t *",
+     "doc": "Client from es_new_client."
+    }
+   ],
+   "doc": "Unsubscribes from all events.",
+   "url": "https://developer.apple.com/documentation/endpointsecurity"
+  },
+  {
+   "name": "es_respond_auth_result",
+   "returns": "es_respond_result_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t *",
+     "doc": "Client from es_new_client."
+    },
+    {
+     "name": "message",
+     "type": "const es_message_t *",
+     "doc": "The AUTH message being answered."
+    },
+    {
+     "name": "result",
+     "type": "es_auth_result_t",
+     "doc": "ES_AUTH_RESULT_ALLOW or ES_AUTH_RESULT_DENY."
+    },
+    {
+     "name": "cache",
+     "type": "bool",
+     "doc": "Cache the result for identical future events."
+    }
+   ],
+   "doc": "Responds to an AUTH event (except ES_EVENT_TYPE_AUTH_OPEN).",
+   "url": "https://developer.apple.com/documentation/endpointsecurity"
+  },
+  {
+   "name": "es_respond_flags_result",
+   "returns": "es_respond_result_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t *",
+     "doc": "Client from es_new_client."
+    },
+    {
+     "name": "message",
+     "type": "const es_message_t *",
+     "doc": "The AUTH_OPEN message."
+    },
+    {
+     "name": "authorized_flags",
+     "type": "uint32_t",
+     "doc": "Allowed open flags (fflag); 0 denies, UINT32_MAX allows all."
+    },
+    {
+     "name": "cache",
+     "type": "bool",
+     "doc": "Cache the result."
+    }
+   ],
+   "doc": "Responds to ES_EVENT_TYPE_AUTH_OPEN with authorized flags.",
+   "url": "https://developer.apple.com/documentation/endpointsecurity"
+  },
+  {
+   "name": "es_clear_cache",
+   "returns": "es_clear_cache_result_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t *",
+     "doc": "Client from es_new_client."
+    }
+   ],
+   "doc": "Clears all cached auth results for all clients (expensive; use sparingly).",
+   "url": "https://developer.apple.com/documentation/endpointsecurity"
+  },
+  {
+   "name": "es_mute_process",
+   "returns": "es_return_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t *",
+     "doc": "Client from es_new_client."
+    },
+    {
+     "name": "audit_token",
+     "type": "const audit_token_t *",
+     "doc": "Process to mute."
+    }
+   ],
+   "doc": "Suppresses events from a process (e.g. your own agent).",
+   "url": "https://developer.apple.com/documentation/endpointsecurity"
+  },
+  {
+   "name": "es_mute_path",
+   "returns": "es_return_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t *",
+     "doc": "Client from es_new_client."
+    },
+    {
+     "name": "path",
+     "type": "const char *",
+     "doc": "Path to mute."
+    },
+    {
+     "name": "type",
+     "type": "es_mute_path_type_t",
+     "doc": "ES_MUTE_PATH_TYPE_PREFIX / _LITERAL / _TARGET_*"
+    }
+   ],
+   "doc": "Mutes events by path (macOS 12+).",
+   "url": "https://developer.apple.com/documentation/endpointsecurity"
+  },
+  {
+   "name": "es_retain_message",
+   "returns": "void",
+   "params": [
+    {
+     "name": "msg",
+     "type": "const es_message_t *",
+     "doc": "Message to keep beyond the handler."
+    }
+   ],
+   "doc": "Retains a message for asynchronous processing (macOS 11+).",
+   "url": "https://developer.apple.com/documentation/endpointsecurity",
+   "pairedWith": "es_release_message"
+  },
+  {
+   "name": "es_release_message",
+   "returns": "void",
+   "params": [
+    {
+     "name": "msg",
+     "type": "const es_message_t *",
+     "doc": "Retained message."
+    }
+   ],
+   "doc": "Releases a retained message.",
+   "url": "https://developer.apple.com/documentation/endpointsecurity"
+  },
+  {
+   "name": "es_copy_message",
+   "returns": "es_message_t *",
+   "params": [
+    {
+     "name": "msg",
+     "type": "const es_message_t *",
+     "doc": "Message."
+    }
+   ],
+   "doc": "Deprecated in macOS 11: copies a message.",
+   "url": "https://developer.apple.com/documentation/endpointsecurity",
+   "deprecated": "es_retain_message"
+  },
+  {
+   "name": "es_free_message",
+   "returns": "void",
+   "params": [
+    {
+     "name": "msg",
+     "type": "es_message_t *",
+     "doc": "Copied message."
+    }
+   ],
+   "doc": "Deprecated in macOS 11: frees a copied message.",
+   "url": "https://developer.apple.com/documentation/endpointsecurity",
+   "deprecated": "es_release_message"
+  },
+  {
+   "name": "es_mute_path_literal",
+   "returns": "es_return_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t *",
+     "doc": "Client from es_new_client."
+    },
+    {
+     "name": "path",
+     "type": "const char *",
+     "doc": "Literal path."
+    }
+   ],
+   "doc": "Deprecated in macOS 12: mutes a literal path.",
+   "url": "https://developer.apple.com/documentation/endpointsecurity",
+   "deprecated": "es_mute_path"
+  },
+  {
+   "name": "es_mute_path_prefix",
+   "returns": "es_return_t",
+   "params": [
+    {
+     "name": "client",
+     "type": "es_client_t *",
+     "doc": "Client from es_new_client."
+    },
+    {
+     "name": "path_prefix",
+     "type": "const char *",
+     "doc": "Path prefix."
+    }
+   ],
+   "doc": "Deprecated in macOS 12: mutes a path prefix.",
+   "url": "https://developer.apple.com/documentation/endpointsecurity",
+   "deprecated": "es_mute_path"
+  }
+ ],
+ "constants": [
+  {
+   "name": "ES_EVENT_TYPE_AUTH_EXEC",
+   "doc": "Authorize process execution (respond with es_respond_auth_result)."
+  },
+  {
+   "name": "ES_EVENT_TYPE_AUTH_OPEN",
+   "doc": "Authorize file open (respond with es_respond_flags_result)."
+  },
+  {
+   "name": "ES_EVENT_TYPE_AUTH_KEXTLOAD",
+   "doc": "Authorize kernel extension load."
+  },
+  {
+   "name": "ES_EVENT_TYPE_AUTH_MMAP",
+   "doc": "Authorize memory mapping."
+  },
+  {
+   "name": "ES_EVENT_TYPE_AUTH_MPROTECT",
+   "doc": "Authorize memory protection change."
+  },
+  {
+   "name": "ES_EVENT_TYPE_AUTH_MOUNT",
+   "doc": "Authorize mount."
+  },
+  {
+   "name": "ES_EVENT_TYPE_AUTH_RENAME",
+   "doc": "Authorize rename."
+  },
+  {
+   "name": "ES_EVENT_TYPE_AUTH_SIGNAL",
+   "doc": "Authorize signal delivery."
+  },
+  {
+   "name": "ES_EVENT_TYPE_AUTH_UNLINK",
+   "doc": "Authorize unlink."
+  },
+  {
+   "name": "ES_EVENT_TYPE_AUTH_CREATE",
+   "doc": "Authorize file creation."
+  },
+  {
+   "name": "ES_EVENT_TYPE_AUTH_TRUNCATE",
+   "doc": "Authorize truncate."
+  },
+  {
+   "name": "ES_EVENT_TYPE_AUTH_LINK",
+   "doc": "Authorize hard link."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_EXEC",
+   "doc": "Process executed."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_FORK",
+   "doc": "Process forked."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_EXIT",
+   "doc": "Process exited."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_OPEN",
+   "doc": "File opened."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_CLOSE",
+   "doc": "File closed (modified flag shows writes)."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_CREATE",
+   "doc": "File created."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_WRITE",
+   "doc": "File written."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_RENAME",
+   "doc": "File renamed."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_UNLINK",
+   "doc": "File deleted."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_SIGNAL",
+   "doc": "Signal sent."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_KEXTLOAD",
+   "doc": "Kernel extension loaded."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_MMAP",
+   "doc": "Memory mapped."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_MPROTECT",
+   "doc": "Memory protection changed."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_MOUNT",
+   "doc": "Volume mounted."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_REMOTE_THREAD_CREATE",
+   "doc": "Thread created in another process (injection indicator)."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_GET_TASK",
+   "doc": "Task port obtained for another process."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_PTRACE",
+   "doc": "ptrace attached."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_CS_INVALIDATED",
+   "doc": "Code signature invalidated."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_BTM_LAUNCH_ITEM_ADD",
+   "doc": "Background task / launch item added (macOS 13+; persistence)."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_XP_MALWARE_DETECTED",
+   "doc": "XProtect detected malware (macOS 13+)."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_AUTHENTICATION",
+   "doc": "Authentication attempt (macOS 13+)."
+  },
+  {
+   "name": "ES_EVENT_TYPE_NOTIFY_LOGIN_LOGIN",
+   "doc": "User login (macOS 13+)."
+  },
+  {
+   "name": "ES_AUTH_RESULT_ALLOW",
+   "doc": "Allow the operation."
+  },
+  {
+   "name": "ES_AUTH_RESULT_DENY",
+   "doc": "Deny the operation."
+  },
+  {
+   "name": "ES_NEW_CLIENT_RESULT_SUCCESS",
+   "doc": "es_new_client succeeded."
+  }
+ ]
+}

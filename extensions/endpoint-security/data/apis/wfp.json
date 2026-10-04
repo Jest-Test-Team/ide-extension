@@ -1,0 +1,506 @@
+{
+ "framework": "Windows Filtering Platform",
+ "id": "wfp",
+ "docs": "https://learn.microsoft.com/en-us/windows/win32/fwp/windows-filtering-platform-start-page",
+ "functions": [
+  {
+   "name": "FwpmEngineOpen0",
+   "returns": "DWORD \u2014 ERROR_SUCCESS on success",
+   "params": [
+    {
+     "name": "serverName",
+     "type": "const wchar_t *",
+     "doc": "Must be NULL."
+    },
+    {
+     "name": "authnService",
+     "type": "UINT32",
+     "doc": "RPC_C_AUTHN_WINNT or RPC_C_AUTHN_DEFAULT."
+    },
+    {
+     "name": "authIdentity",
+     "type": "SEC_WINNT_AUTH_IDENTITY_W *",
+     "doc": "Optional; NULL for the caller's credentials."
+    },
+    {
+     "name": "session",
+     "type": "const FWPM_SESSION0 *",
+     "doc": "Session parameters; FWPM_SESSION_FLAG_DYNAMIC removes objects when the session closes."
+    },
+    {
+     "name": "engineHandle",
+     "type": "HANDLE *",
+     "doc": "Receives the engine handle."
+    }
+   ],
+   "doc": "Opens a session to the filter engine.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmengineopen0",
+   "pairedWith": "FwpmEngineClose0",
+   "irql": "PASSIVE_LEVEL",
+   "notes": [
+    "Use FWPM_SESSION_FLAG_DYNAMIC for filters that must disappear if the agent crashes."
+   ]
+  },
+  {
+   "name": "FwpmEngineClose0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    }
+   ],
+   "doc": "Closes a filter engine session.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmengineclose0",
+   "irql": "PASSIVE_LEVEL"
+  },
+  {
+   "name": "FwpmTransactionBegin0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    },
+    {
+     "name": "flags",
+     "type": "UINT32",
+     "doc": "0, or FWPM_TXN_READ_ONLY."
+    }
+   ],
+   "doc": "Begins an explicit transaction within the current session.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmtransactionbegin0",
+   "pairedWith": "FwpmTransactionCommit0",
+   "notes": [
+    "Call FwpmTransactionAbort0 on every error path."
+   ]
+  },
+  {
+   "name": "FwpmTransactionCommit0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    }
+   ],
+   "doc": "Commits the current transaction.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmtransactioncommit0"
+  },
+  {
+   "name": "FwpmTransactionAbort0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    }
+   ],
+   "doc": "Aborts the current transaction, rolling back all changes.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmtransactionabort0"
+  },
+  {
+   "name": "FwpmProviderAdd0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    },
+    {
+     "name": "provider",
+     "type": "const FWPM_PROVIDER0 *",
+     "doc": "Provider to add."
+    },
+    {
+     "name": "sd",
+     "type": "PSECURITY_DESCRIPTOR",
+     "doc": "Security descriptor for the object, or NULL."
+    }
+   ],
+   "doc": "Adds a provider (identifies your product's filters).",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmprovideradd0"
+  },
+  {
+   "name": "FwpmSubLayerAdd0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    },
+    {
+     "name": "subLayer",
+     "type": "const FWPM_SUBLAYER0 *",
+     "doc": "Sublayer to add; weight decides arbitration order."
+    },
+    {
+     "name": "sd",
+     "type": "PSECURITY_DESCRIPTOR",
+     "doc": "Security descriptor for the object, or NULL."
+    }
+   ],
+   "doc": "Adds a new sublayer.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmsublayeradd0"
+  },
+  {
+   "name": "FwpmCalloutAdd0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    },
+    {
+     "name": "callout",
+     "type": "const FWPM_CALLOUT0 *",
+     "doc": "Callout to add (must match a registered kernel callout key)."
+    },
+    {
+     "name": "sd",
+     "type": "PSECURITY_DESCRIPTOR",
+     "doc": "Security descriptor for the object, or NULL."
+    },
+    {
+     "name": "id",
+     "type": "UINT32 *",
+     "doc": "Optional runtime id."
+    }
+   ],
+   "doc": "Adds a callout object to the system.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmcalloutadd0"
+  },
+  {
+   "name": "FwpmFilterAdd0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    },
+    {
+     "name": "filter",
+     "type": "const FWPM_FILTER0 *",
+     "doc": "Filter to add: layerKey, subLayerKey, weight, conditions and action."
+    },
+    {
+     "name": "sd",
+     "type": "PSECURITY_DESCRIPTOR",
+     "doc": "Security descriptor for the object, or NULL."
+    },
+    {
+     "name": "id",
+     "type": "UINT64 *",
+     "doc": "Optional runtime id of the new filter."
+    }
+   ],
+   "doc": "Adds a new filter object to the system.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmfilteradd0",
+   "notes": [
+    "Group related adds in FwpmTransactionBegin0/Commit0 so a failure cannot leave a half-applied policy."
+   ]
+  },
+  {
+   "name": "FwpmFilterDeleteById0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    },
+    {
+     "name": "id",
+     "type": "UINT64",
+     "doc": "Runtime filter id."
+    }
+   ],
+   "doc": "Removes a filter by its runtime id.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmfilterdeletebyid0"
+  },
+  {
+   "name": "FwpmFilterDeleteByKey0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    },
+    {
+     "name": "key",
+     "type": "const GUID *",
+     "doc": "Filter key."
+    }
+   ],
+   "doc": "Removes a filter by its GUID key.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmfilterdeletebykey0"
+  },
+  {
+   "name": "FwpmNetEventSubscribe0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    },
+    {
+     "name": "subscription",
+     "type": "const FWPM_NET_EVENT_SUBSCRIPTION0 *",
+     "doc": "Which net events to receive."
+    },
+    {
+     "name": "callback",
+     "type": "FWPM_NET_EVENT_CALLBACK0",
+     "doc": "Called for each event."
+    },
+    {
+     "name": "context",
+     "type": "void *",
+     "doc": "Passed to the callback."
+    },
+    {
+     "name": "eventsHandle",
+     "type": "HANDLE *",
+     "doc": "Receives the subscription handle."
+    }
+   ],
+   "doc": "Subscribes to WFP network events (drops, allows, IPsec failures).",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmneteventsubscribe0",
+   "pairedWith": "FwpmNetEventUnsubscribe0"
+  },
+  {
+   "name": "FwpmNetEventUnsubscribe0",
+   "returns": "DWORD",
+   "params": [
+    {
+     "name": "engineHandle",
+     "type": "HANDLE",
+     "doc": "Handle from FwpmEngineOpen0."
+    },
+    {
+     "name": "eventsHandle",
+     "type": "HANDLE",
+     "doc": "Subscription handle."
+    }
+   ],
+   "doc": "Cancels a network event subscription.",
+   "url": "https://learn.microsoft.com/en-us/windows/win32/api/fwpmu/nf-fwpmu-fwpmneteventunsubscribe0"
+  },
+  {
+   "name": "FwpsCalloutRegister3",
+   "returns": "NTSTATUS",
+   "params": [
+    {
+     "name": "deviceObject",
+     "type": "void *",
+     "doc": "Driver device object."
+    },
+    {
+     "name": "callout",
+     "type": "const FWPS_CALLOUT3 *",
+     "doc": "classifyFn, notifyFn, flowDeleteFn and calloutKey."
+    },
+    {
+     "name": "calloutId",
+     "type": "UINT32 *",
+     "doc": "Receives the runtime callout id."
+    }
+   ],
+   "doc": "Registers a callout with the filter engine (kernel mode).",
+   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/nf-fwpsk-fwpscalloutregister3",
+   "irql": "PASSIVE_LEVEL",
+   "pairedWith": "FwpsCalloutUnregisterById0",
+   "notes": [
+    "Unregister in DriverUnload; a callout left registered after unload crashes the system on the next classify."
+   ]
+  },
+  {
+   "name": "FwpsCalloutRegister2",
+   "returns": "NTSTATUS",
+   "params": [
+    {
+     "name": "deviceObject",
+     "type": "void *",
+     "doc": "Driver device object."
+    },
+    {
+     "name": "callout",
+     "type": "const FWPS_CALLOUT2 *",
+     "doc": "Callout registration."
+    },
+    {
+     "name": "calloutId",
+     "type": "UINT32 *",
+     "doc": "Receives the runtime callout id."
+    }
+   ],
+   "doc": "Registers a callout (kernel mode, FWPS_CALLOUT2).",
+   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/nf-fwpsk-fwpscalloutregister2",
+   "irql": "PASSIVE_LEVEL",
+   "pairedWith": "FwpsCalloutUnregisterById0"
+  },
+  {
+   "name": "FwpsCalloutRegister1",
+   "returns": "NTSTATUS",
+   "params": [
+    {
+     "name": "deviceObject",
+     "type": "void *",
+     "doc": "Driver device object."
+    },
+    {
+     "name": "callout",
+     "type": "const FWPS_CALLOUT1 *",
+     "doc": "Callout registration."
+    },
+    {
+     "name": "calloutId",
+     "type": "UINT32 *",
+     "doc": "Receives the runtime callout id."
+    }
+   ],
+   "doc": "Registers a callout (kernel mode, FWPS_CALLOUT1).",
+   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/nf-fwpsk-fwpscalloutregister1",
+   "irql": "PASSIVE_LEVEL",
+   "pairedWith": "FwpsCalloutUnregisterById0"
+  },
+  {
+   "name": "FwpsCalloutRegister0",
+   "returns": "NTSTATUS",
+   "params": [
+    {
+     "name": "deviceObject",
+     "type": "void *",
+     "doc": "Driver device object."
+    },
+    {
+     "name": "callout",
+     "type": "const FWPS_CALLOUT0 *",
+     "doc": "Callout registration."
+    },
+    {
+     "name": "calloutId",
+     "type": "UINT32 *",
+     "doc": "Receives the runtime callout id."
+    }
+   ],
+   "doc": "Registers a callout (kernel mode, FWPS_CALLOUT0).",
+   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/nf-fwpsk-fwpscalloutregister0",
+   "irql": "PASSIVE_LEVEL",
+   "pairedWith": "FwpsCalloutUnregisterById0"
+  },
+  {
+   "name": "FwpsCalloutUnregisterById0",
+   "returns": "NTSTATUS",
+   "params": [
+    {
+     "name": "calloutId",
+     "type": "const UINT32",
+     "doc": "Runtime callout id."
+    }
+   ],
+   "doc": "Unregisters a callout (kernel mode). Returns STATUS_DEVICE_BUSY while flows still reference it.",
+   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/nf-fwpsk-fwpscalloutunregisterbyid0",
+   "irql": "PASSIVE_LEVEL"
+  },
+  {
+   "name": "FwpsInjectionHandleCreate0",
+   "returns": "NTSTATUS",
+   "params": [
+    {
+     "name": "addressFamily",
+     "type": "ADDRESS_FAMILY",
+     "doc": "AF_INET, AF_INET6 or AF_UNSPEC."
+    },
+    {
+     "name": "flags",
+     "type": "UINT32",
+     "doc": "FWPS_INJECTION_TYPE_* flags."
+    },
+    {
+     "name": "injectionHandle",
+     "type": "HANDLE *",
+     "doc": "Receives the injection handle."
+    }
+   ],
+   "doc": "Creates a handle for packet injection.",
+   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/nf-fwpsk-fwpsinjectionhandlecreate0",
+   "irql": "PASSIVE_LEVEL",
+   "pairedWith": "FwpsInjectionHandleDestroy0"
+  },
+  {
+   "name": "FwpsInjectionHandleDestroy0",
+   "returns": "NTSTATUS",
+   "params": [
+    {
+     "name": "injectionHandle",
+     "type": "HANDLE",
+     "doc": "Injection handle."
+    }
+   ],
+   "doc": "Destroys an injection handle.",
+   "url": "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/fwpsk/nf-fwpsk-fwpsinjectionhandledestroy0",
+   "irql": "PASSIVE_LEVEL"
+  }
+ ],
+ "constants": [
+  {
+   "name": "FWPM_SESSION_FLAG_DYNAMIC",
+   "doc": "Objects added in the session are deleted when it ends."
+  },
+  {
+   "name": "FWPM_TXN_READ_ONLY",
+   "doc": "Read-only transaction flag for FwpmTransactionBegin0."
+  },
+  {
+   "name": "FWP_ACTION_BLOCK",
+   "doc": "Filter action: block."
+  },
+  {
+   "name": "FWP_ACTION_PERMIT",
+   "doc": "Filter action: permit."
+  },
+  {
+   "name": "FWP_ACTION_CALLOUT_TERMINATING",
+   "doc": "Callout that always returns permit or block."
+  },
+  {
+   "name": "FWP_ACTION_CALLOUT_INSPECTION",
+   "doc": "Callout that never blocks (inspection only)."
+  },
+  {
+   "name": "FWPM_LAYER_ALE_AUTH_CONNECT_V4",
+   "doc": "Outbound connect authorization (IPv4)."
+  },
+  {
+   "name": "FWPM_LAYER_ALE_AUTH_CONNECT_V6",
+   "doc": "Outbound connect authorization (IPv6)."
+  },
+  {
+   "name": "FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V4",
+   "doc": "Inbound accept authorization (IPv4)."
+  },
+  {
+   "name": "FWPM_LAYER_ALE_AUTH_RECV_ACCEPT_V6",
+   "doc": "Inbound accept authorization (IPv6)."
+  },
+  {
+   "name": "FWPM_LAYER_ALE_FLOW_ESTABLISHED_V4",
+   "doc": "Notification when a flow is established (IPv4)."
+  },
+  {
+   "name": "FWPM_LAYER_STREAM_V4",
+   "doc": "TCP stream data (IPv4)."
+  }
+ ]
+}

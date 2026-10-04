@@ -21,6 +21,8 @@ const LANGUAGE_TO_GRAMMAR: Record<string, GrammarId> = {
   cpp: 'cpp',
   'cuda-cpp': 'cpp',
   objc: 'c',
+  'objective-c': 'c',
+  'objective-cpp': 'cpp',
   rust: 'rust',
   go: 'go',
   typescript: 'typescript',

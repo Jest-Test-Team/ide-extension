@@ -5,15 +5,68 @@
   "version": "0.1.0",
   "publisher": "jest-test-team",
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/Jest-Test-Team/ide-extension.git", "directory": "extensions/endpoint-security" },
-  "engines": { "vscode": "^1.90.0" },
-  "categories": ["Linters", "Programming Languages", "Other"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jest-Test-Team/ide-extension.git",
+    "directory": "extensions/endpoint-security"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages",
+    "Other"
+  ],
   "main": "./dist/extension.js",
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:c",
+    "onLanguage:cpp",
+    "onLanguage:rust",
+    "onLanguage:objective-c",
+    "onLanguage:go",
+    "onLanguage:typescript",
+    "onLanguage:javascript"
+  ],
   "contributes": {
     "commands": [
-      { "command": "endpointSecurity.hello", "title": "Hello", "category": "Endpoint Security & Compliance Toolkit" }
-    ]
+      {
+        "command": "endpointSecurity.scanWorkspace",
+        "title": "Scan Workspace",
+        "category": "Endpoint Security"
+      }
+    ],
+    "configuration": {
+      "title": "Endpoint Security & Compliance",
+      "properties": {
+        "endpointSecurity.apiRules.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Validate WFP / ETW / Endpoint Security API usage in C, C++, Objective-C and Rust."
+        },
+        "endpointSecurity.lintOnType": {
+          "type": "boolean",
+          "default": true,
+          "description": "Lint while typing (otherwise on open and save)."
+        },
+        "endpointSecurity.disabledRules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Rule ids to turn off, e.g. `edr/etw-broad-enable`."
+        },
+        "endpointSecurity.rulePacks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Additional YAML/JSON rule packs (workspace-relative paths)."
+        }
+      }
+    }
   },
   "scripts": {
     "build": "node ../../scripts/build-extension.mjs",
@@ -24,5 +77,37 @@
   },
   "devDependencies": {
     "@ide-ext/core": "*"
+  },
+  "x-build": {
+    "copy": [
+      {
+        "from": "pkg:web-tree-sitter/tree-sitter.wasm",
+        "to": "grammars/tree-sitter.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-c/tree-sitter-c.wasm",
+        "to": "grammars/tree-sitter-c.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-cpp/tree-sitter-cpp.wasm",
+        "to": "grammars/tree-sitter-cpp.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-rust/tree-sitter-rust.wasm",
+        "to": "grammars/tree-sitter-rust.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-go/tree-sitter-go.wasm",
+        "to": "grammars/tree-sitter-go.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-typescript/tree-sitter-typescript.wasm",
+        "to": "grammars/tree-sitter-typescript.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-typescript/tree-sitter-tsx.wasm",
+        "to": "grammars/tree-sitter-tsx.wasm"
+      }
+    ]
   }
 }
