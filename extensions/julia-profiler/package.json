@@ -74,6 +74,11 @@
         "command": "juliaProfiler.openLocation",
         "title": "Open Source Location",
         "category": "Julia Profiler"
+      },
+      {
+        "command": "juliaProfiler.insertPrecompileWorkload",
+        "title": "Insert PrecompileTools Workload",
+        "category": "Julia Profiler"
       }
     ],
     "menus": {
@@ -132,6 +137,34 @@
           "default": 30,
           "minimum": 1,
           "description": "Abort profiling after this many minutes."
+        },
+        "juliaProfiler.lint.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run the static invalidation/inference linter on Julia files."
+        },
+        "juliaProfiler.lint.disabledRules": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "julia/abstract-field",
+              "julia/nonconst-global",
+              "julia/untyped-container",
+              "julia/global-in-function",
+              "julia/base-method-extension",
+              "julia/runtime-invalidation",
+              "julia/runtime-inference-trigger"
+            ]
+          },
+          "default": [],
+          "description": "Rule ids to turn off."
+        },
+        "juliaProfiler.invalidationThreshold": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "description": "Recorded invalidations at or above this count are reported as warnings (below: information)."
         }
       }
     },
@@ -174,6 +207,14 @@
       {
         "from": "scripts",
         "to": "scripts"
+      },
+      {
+        "from": "pkg:web-tree-sitter/tree-sitter.wasm",
+        "to": "grammars/tree-sitter.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-julia/tree-sitter-julia.wasm",
+        "to": "grammars/tree-sitter-julia.wasm"
       }
     ],
     "webEntries": {

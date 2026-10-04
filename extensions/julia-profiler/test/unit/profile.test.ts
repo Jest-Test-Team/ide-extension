@@ -52,3 +52,15 @@ describe('profile', () => {
     expect(projectName('[deps]\nname = "Bar"')).toBe('');
   });
 });
+
+describe('runtimeFindings', () => {
+  it('maps invalidation roots and triggers onto source files', async () => {
+    const { runtimeFindings } = await import('../../src/runtimeFindings');
+    const own = runtimeFindings(profile, '/work/InvDemo/src/InvDemo.jl', 10);
+    expect(own.map((f) => [f.ruleId, f.severity, f.range.start.line])).toEqual([['julia/runtime-invalidation', 'warning', 9]]);
+    expect(own[0].message).toContain('InvDemo.==');
+    const base = runtimeFindings(profile, '/opt/julia-1.13.1/share/julia/base/reduce.jl', 10);
+    expect(base.map((f) => f.ruleId)).toEqual(['julia/runtime-inference-trigger']);
+    expect(runtimeFindings(undefined, '/x.jl', 10)).toEqual([]);
+  });
+});

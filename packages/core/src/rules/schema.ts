@@ -38,7 +38,11 @@ interface RuleBase {
 /** Structural rule expressed as a tree-sitter query. */
 export interface QueryRule extends RuleBase {
   kind?: 'query';
-  /** One query for every grammar, or a query per grammar id. */
+  /**
+   * One query for every grammar, or a query per grammar id. A query may hold several top-level
+   * patterns. Note: web-tree-sitter does not apply text predicates (`#eq?`, `#match?`) inside
+   * `[...]` alternations, so write alternatives as separate top-level patterns instead.
+   */
   query: string | Partial<Record<GrammarId, string>>;
   /** Capture whose node is reported. Defaults to `match`, else the first capture. */
   capture?: string;
