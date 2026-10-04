@@ -91,9 +91,14 @@ export interface Finding {
   message: string;
   range: Range;
   refs: RuleRef[];
-  fix?: { title: string; range: Range; newText: string };
+  fix?: { title: string; edits: TextEdit[] };
   /** Free-form data a host can attach (for example a related location). */
   data?: Record<string, unknown>;
+}
+
+export interface TextEdit {
+  range: Range;
+  newText: string;
 }
 
 export interface RulePack {

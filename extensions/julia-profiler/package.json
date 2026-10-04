@@ -5,14 +5,158 @@
   "version": "0.1.0",
   "publisher": "jest-test-team",
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/Jest-Test-Team/ide-extension.git", "directory": "extensions/julia-profiler" },
-  "engines": { "vscode": "^1.90.0" },
-  "categories": ["Linters", "Visualization", "Programming Languages"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jest-Test-Team/ide-extension.git",
+    "directory": "extensions/julia-profiler"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters",
+    "Visualization",
+    "Programming Languages"
+  ],
   "main": "./dist/extension.js",
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:julia",
+    "workspaceContains:**/Project.toml",
+    "onView:juliaProfiler.invalidations"
+  ],
   "contributes": {
     "commands": [
-      { "command": "juliaProfiler.hello", "title": "Hello", "category": "Julia Invalidation & Compiler Profiler" }
+      {
+        "command": "juliaProfiler.analyze",
+        "title": "Analyze Invalidations & Inference",
+        "category": "Julia Profiler",
+        "icon": "$(flame)"
+      },
+      {
+        "command": "juliaProfiler.openProfile",
+        "title": "Open Profile JSON\u2026",
+        "category": "Julia Profiler"
+      },
+      {
+        "command": "juliaProfiler.createWorkload",
+        "title": "Create Inference Workload Script",
+        "category": "Julia Profiler"
+      },
+      {
+        "command": "juliaProfiler.clearProfile",
+        "title": "Clear Profile",
+        "category": "Julia Profiler"
+      },
+      {
+        "command": "juliaProfiler.showInvalidations",
+        "title": "Show Invalidation Trees",
+        "category": "Julia Profiler"
+      },
+      {
+        "command": "juliaProfiler.showFlameGraph",
+        "title": "Show Inference Flame Graph & Report",
+        "category": "Julia Profiler",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "juliaProfiler.filterInvalidations",
+        "title": "Filter Invalidations\u2026",
+        "category": "Julia Profiler",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "juliaProfiler.clearFilter",
+        "title": "Clear Filter",
+        "category": "Julia Profiler",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "juliaProfiler.openLocation",
+        "title": "Open Source Location",
+        "category": "Julia Profiler"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "juliaProfiler.analyze",
+          "when": "resourceLangId == julia",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "juliaProfiler.analyze",
+          "when": "view == juliaProfiler.invalidations",
+          "group": "navigation@1"
+        },
+        {
+          "command": "juliaProfiler.showFlameGraph",
+          "when": "view == juliaProfiler.invalidations && juliaProfiler.hasProfile",
+          "group": "navigation@2"
+        },
+        {
+          "command": "juliaProfiler.filterInvalidations",
+          "when": "view == juliaProfiler.invalidations && !juliaProfiler.filtered",
+          "group": "navigation@3"
+        },
+        {
+          "command": "juliaProfiler.clearFilter",
+          "when": "view == juliaProfiler.invalidations && juliaProfiler.filtered",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "juliaProfiler.openLocation",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Julia Profiler",
+      "properties": {
+        "juliaProfiler.executablePath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the `julia` binary. Falls back to `julia.executablePath`, then `PATH`, then `~/.juliaup/bin/julia`.",
+          "scope": "machine-overridable"
+        },
+        "juliaProfiler.workloadScript": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Workload script (relative to the project) run under `@snoop_inference`. Defaults to `snoop/workload.jl` when it exists."
+        },
+        "juliaProfiler.timeoutMinutes": {
+          "type": "number",
+          "default": 30,
+          "minimum": 1,
+          "description": "Abort profiling after this many minutes."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "juliaProfiler",
+          "title": "Julia Profiler",
+          "icon": "media/flame.svg"
+        }
+      ]
+    },
+    "views": {
+      "juliaProfiler": [
+        {
+          "id": "juliaProfiler.invalidations",
+          "name": "Invalidations"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "juliaProfiler.invalidations",
+        "contents": "No profile loaded.\n[Analyze Invalidations & Inference](command:juliaProfiler.analyze)\n[Open Profile JSON\u2026](command:juliaProfiler.openProfile)\nThe analysis runs SnoopCompile.jl in a private environment; your Project.toml is not modified."
+      }
     ]
   },
   "scripts": {
@@ -24,5 +168,16 @@
   },
   "devDependencies": {
     "@ide-ext/core": "*"
+  },
+  "x-build": {
+    "copy": [
+      {
+        "from": "scripts",
+        "to": "scripts"
+      }
+    ],
+    "webEntries": {
+      "report": "src/web/report.ts"
+    }
   }
 }

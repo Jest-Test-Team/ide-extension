@@ -29,7 +29,7 @@ describe('RuleEngine', () => {
     expect(out).toHaveLength(1);
     expect(out[0].message).toBe('avoid strcpy');
     expect(out[0].range).toEqual({ start: { line: 1, character: 10 }, end: { line: 1, character: 16 } });
-    expect(out[0].fix?.newText).toBe('strlcpy');
+    expect(out[0].fix?.edits[0].newText).toBe('strlcpy');
     expect(out[0].refs[0].label).toBe('CWE-120');
   });
 

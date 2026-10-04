@@ -190,7 +190,9 @@ class FixProvider implements vscode.CodeActionProvider {
       if (f.fix) {
         const a = new vscode.CodeAction(f.fix.title, vscode.CodeActionKind.QuickFix);
         a.edit = new vscode.WorkspaceEdit();
-        a.edit.replace(doc.uri, toRange(f.fix.range), f.fix.newText);
+        for (const e of f.fix.edits) {
+          a.edit.replace(doc.uri, toRange(e.range), e.newText);
+        }
         a.diagnostics = [d];
         a.isPreferred = true;
         actions.push(a);

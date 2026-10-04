@@ -129,7 +129,7 @@ export class RuleEngine {
           range,
           refs: rule.refs ?? [],
           fix: rule.fix
-            ? { title: rule.fix.title, range, newText: renderTemplate(rule.fix.replacement, allVars) }
+            ? { title: rule.fix.title, edits: [{ range, newText: renderTemplate(rule.fix.replacement, allVars) }] }
             : undefined,
         };
       },
