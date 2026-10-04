@@ -24,13 +24,29 @@
     "onLanguage:cpp",
     "onLanguage:yaml",
     "workspaceContains:**/sdkconfig",
-    "workspaceContains:**/CMakeLists.txt"
+    "workspaceContains:**/CMakeLists.txt",
+    "onCommand:hwSecurity.assessEntropy"
   ],
   "contributes": {
     "commands": [
       {
         "command": "hwSecurity.scanWorkspace",
         "title": "Scan Workspace (ESP32 / ESPHome)",
+        "category": "HW Security"
+      },
+      {
+        "command": "hwSecurity.assessEntropy",
+        "title": "Assess Entropy Source (SP 800-90B)\u2026",
+        "category": "HW Security"
+      },
+      {
+        "command": "hwSecurity.restartTest",
+        "title": "Run Restart Test (SP 800-90B 3.1.4)\u2026",
+        "category": "HW Security"
+      },
+      {
+        "command": "hwSecurity.analyzePuf",
+        "title": "Analyze PUF Responses\u2026",
         "category": "HW Security"
       }
     ],
@@ -62,8 +78,50 @@
           },
           "default": [],
           "markdownDescription": "Additional YAML/JSON rule packs (workspace-relative paths) using the same schema as the built-in rules."
+        },
+        "hwSecurity.nist.eaNonIidPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Optional path to NIST's `ea_non_iid` binary ([SP800-90B_EntropyAssessment](https://github.com/usnistgov/SP800-90B_EntropyAssessment)). When set, assessments of binary files are cross-checked against it."
+        },
+        "hwSecurity.restart.simulationRounds": {
+          "type": "number",
+          "default": 200000,
+          "minimum": 1000,
+          "description": "Monte-Carlo rounds for the restart sanity-check cutoff (NIST ea_restart uses 5,000,000)."
+        },
+        "hwSecurity.puf.eccBlockBits": {
+          "type": "number",
+          "default": 255,
+          "minimum": 1,
+          "description": "Block length n of the error-correcting code used for key reconstruction (e.g. 255 for BCH(255,k,t))."
+        },
+        "hwSecurity.puf.targetFailureRate": {
+          "type": "number",
+          "default": 1e-06,
+          "description": "Target key-reconstruction failure rate per block."
         }
       }
+    },
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "hwSecurity.assessEntropy",
+          "when": "resourceExtname =~ /^\\.(bin|dat|raw)$/",
+          "group": "hwSecurity@1"
+        },
+        {
+          "command": "hwSecurity.restartTest",
+          "when": "resourceExtname =~ /^\\.(bin|dat|raw)$/",
+          "group": "hwSecurity@2"
+        },
+        {
+          "command": "hwSecurity.analyzePuf",
+          "when": "resourceExtname == .csv",
+          "group": "hwSecurity@3"
+        }
+      ]
     }
   },
   "scripts": {
@@ -90,6 +148,12 @@
         "from": "pkg:tree-sitter-cpp/tree-sitter-cpp.wasm",
         "to": "grammars/tree-sitter-cpp.wasm"
       }
-    ]
+    ],
+    "nodeEntries": {
+      "entropyWorker": "src/entropy/worker.ts"
+    },
+    "webEntries": {
+      "report": "src/web/report.ts"
+    }
   }
 }

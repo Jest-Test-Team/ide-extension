@@ -1,0 +1,62 @@
+{
+  "name": "restart-2bit",
+  "wordSize": 2,
+  "hI": 1.2,
+  "sanity": {},
+  "overall": {
+    "h_c": 1.297040535395851,
+    "h_i": 1.2,
+    "h_r": 1.3081801091791425,
+    "testCaseDesc": "Overall"
+  },
+  "testCases": [
+    {
+      "dataWordSize": 2,
+      "h_c": 1.3200483935378782,
+      "h_r": 1.3200483935378782,
+      "testCaseDesc": "Most Common Value"
+    },
+    {
+      "dataWordSize": 2,
+      "h_c": 1.297040535395851,
+      "h_r": 1.3081801091791425,
+      "testCaseDesc": "T-Tuple Test"
+    },
+    {
+      "dataWordSize": 2,
+      "h_c": 1.8312248418481003,
+      "h_r": 1.8322236860983891,
+      "testCaseDesc": "LRS Test"
+    },
+    {
+      "dataWordSize": 2,
+      "h_c": 1.3203108264313317,
+      "h_r": 1.3203180361177211,
+      "testCaseDesc": "Multi Most Common in Window Test"
+    },
+    {
+      "dataWordSize": 2,
+      "h_c": 1.8309538227978224,
+      "h_r": 1.8306711948679175,
+      "testCaseDesc": "Lag Prediction Test"
+    },
+    {
+      "dataWordSize": 2,
+      "h_c": 1.3201103837252344,
+      "h_r": 1.320099571428826,
+      "testCaseDesc": "Multi Markov Model with Counting Test (MultiMMC)"
+    },
+    {
+      "dataWordSize": 2,
+      "h_c": 1.3201320157408127,
+      "h_r": 1.3201212031196943,
+      "testCaseDesc": "LZ78Y Test"
+    },
+    {
+      "h_c": 1.297040535395851,
+      "h_i": 1.2,
+      "h_r": 1.3081801091791425,
+      "testCaseDesc": "Overall"
+    }
+  ]
+}
