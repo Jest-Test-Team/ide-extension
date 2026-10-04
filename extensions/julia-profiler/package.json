@@ -34,8 +34,7 @@
   "main": "./dist/extension.js",
   "activationEvents": [
     "onLanguage:julia",
-    "workspaceContains:**/Project.toml",
-    "onView:juliaProfiler.invalidations"
+    "workspaceContains:**/Project.toml"
   ],
   "contributes": {
     "commands": [

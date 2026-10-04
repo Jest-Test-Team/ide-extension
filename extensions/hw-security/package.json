@@ -35,12 +35,10 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
-    "onCommand:hwSecurity.assessEntropy",
     "onLanguage:c",
     "onLanguage:cpp",
     "onLanguage:python",
     "onLanguage:yaml",
-    "onView:hwSecurity.scaPoints",
     "workspaceContains:**/CMakeLists.txt",
     "workspaceContains:**/sdkconfig"
   ],
