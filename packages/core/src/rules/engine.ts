@@ -55,7 +55,8 @@ export class RuleEngine {
       (r) =>
         (r.languages.includes('*') || r.languages.includes(doc.languageId)) &&
         (!r.pathPattern || new RegExp(r.pathPattern).test(doc.path.replace(/\\/g, '/'))) &&
-        (!r.unless || !new RegExp(r.unless, 'm').test(doc.text)),
+        (!r.unless || !new RegExp(r.unless, 'm').test(doc.text)) &&
+        (!r.when || new RegExp(r.when, 'm').test(doc.text)),
     );
     if (rules.length === 0) {
       return [];

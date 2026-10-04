@@ -1,0 +1,19 @@
+esphome:
+  name: livingroom
+
+esp32:
+  board: esp32-s3-devkitc-1
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: "plaintext-pass"
+
+api:
+  reboot_timeout: 15min
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+web_server:
+  port: 80

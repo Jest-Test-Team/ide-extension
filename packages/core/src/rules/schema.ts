@@ -31,6 +31,8 @@ interface RuleBase {
   enabled?: boolean;
   /** Suppresses the rule for the whole document when this regex matches anywhere in the text. */
   unless?: string;
+  /** Runs the rule only when this regex matches somewhere in the document (e.g. `^esphome:`). */
+  when?: string;
   /** Only run when the document path matches this regex (e.g. `(^|/)sdkconfig(\\.\\w+)?$`). */
   pathPattern?: string;
 }

@@ -5,15 +5,66 @@
   "version": "0.1.0",
   "publisher": "jest-test-team",
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/Jest-Test-Team/ide-extension.git", "directory": "extensions/hw-security" },
-  "engines": { "vscode": "^1.90.0" },
-  "categories": ["Linters", "Visualization", "Programming Languages"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jest-Test-Team/ide-extension.git",
+    "directory": "extensions/hw-security"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters",
+    "Visualization",
+    "Programming Languages"
+  ],
   "main": "./dist/extension.js",
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:c",
+    "onLanguage:cpp",
+    "onLanguage:yaml",
+    "workspaceContains:**/sdkconfig",
+    "workspaceContains:**/CMakeLists.txt"
+  ],
   "contributes": {
     "commands": [
-      { "command": "hwSecurity.hello", "title": "Hello", "category": "Embedded Hardware Security Workbench" }
-    ]
+      {
+        "command": "hwSecurity.scanWorkspace",
+        "title": "Scan Workspace (ESP32 / ESPHome)",
+        "category": "HW Security"
+      }
+    ],
+    "configuration": {
+      "title": "Embedded Hardware Security",
+      "properties": {
+        "hwSecurity.lint.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run the ESP32 / ESPHome firmware security linter."
+        },
+        "hwSecurity.lint.onType": {
+          "type": "boolean",
+          "default": true,
+          "description": "Lint while typing (otherwise on open and save)."
+        },
+        "hwSecurity.lint.disabledRules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Rule ids to turn off, e.g. `esp32/insecure-rand`."
+        },
+        "hwSecurity.lint.rulePacks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Additional YAML/JSON rule packs (workspace-relative paths) using the same schema as the built-in rules."
+        }
+      }
+    }
   },
   "scripts": {
     "build": "node ../../scripts/build-extension.mjs",
@@ -24,5 +75,21 @@
   },
   "devDependencies": {
     "@ide-ext/core": "*"
+  },
+  "x-build": {
+    "copy": [
+      {
+        "from": "pkg:web-tree-sitter/tree-sitter.wasm",
+        "to": "grammars/tree-sitter.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-c/tree-sitter-c.wasm",
+        "to": "grammars/tree-sitter-c.wasm"
+      },
+      {
+        "from": "pkg:tree-sitter-cpp/tree-sitter-cpp.wasm",
+        "to": "grammars/tree-sitter-cpp.wasm"
+      }
+    ]
   }
 }

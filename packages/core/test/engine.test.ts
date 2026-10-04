@@ -106,6 +106,14 @@ describe('RuleEngine', () => {
     expect(await engine.run(doc('c', suppressed))).toHaveLength(0);
   });
 
+  it('runs rules only when their `when` regex matches', async () => {
+    const engine = new RuleEngine(testHost(), [
+      { kind: 'pattern', id: 'pw', title: 'pw', severity: 'warning', languages: ['yaml'], message: 'm', pattern: 'password: \\w+', when: '^esphome:' },
+    ]);
+    expect(await engine.run(doc('yaml', 'esphome:\n  name: x\nwifi:\n  password: abc\n'))).toHaveLength(1);
+    expect(await engine.run(doc('yaml', 'db:\n  password: abc\n'))).toHaveLength(0);
+  });
+
   it('isolates a failing custom rule', async () => {
     const engine = new RuleEngine(testHost(), [
       { kind: 'custom', id: 'boom', title: 'b', severity: 'error', languages: ['c'], message: '', check: () => { throw new Error('x'); } },
