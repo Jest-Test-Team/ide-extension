@@ -5,6 +5,21 @@
   "version": "0.1.0",
   "publisher": "jest-test-team",
   "license": "MIT",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "keywords": [
+    "esp32",
+    "esp-idf",
+    "esphome",
+    "entropy",
+    "sp 800-90b",
+    "puf",
+    "chipwhisperer",
+    "side-channel"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/Jest-Test-Team/ide-extension.git",

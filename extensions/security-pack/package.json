@@ -5,9 +5,26 @@
   "version": "0.1.0",
   "publisher": "jest-test-team",
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/Jest-Test-Team/ide-extension.git", "directory": "extensions/security-pack" },
-  "engines": { "vscode": "^1.90.0" },
-  "categories": ["Extension Packs"],
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "keywords": [
+    "security",
+    "extension pack"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jest-Test-Team/ide-extension.git",
+    "directory": "extensions/security-pack"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Extension Packs"
+  ],
   "extensionPack": [
     "jest-test-team.endpoint-security",
     "jest-test-team.julia-profiler",

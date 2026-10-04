@@ -5,6 +5,19 @@
   "version": "0.1.0",
   "publisher": "jest-test-team",
   "license": "MIT",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "keywords": [
+    "julia",
+    "snoopcompile",
+    "invalidations",
+    "compile latency",
+    "benchmark",
+    "flame graph"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/Jest-Test-Team/ide-extension.git",
