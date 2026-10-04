@@ -76,11 +76,11 @@ function parseNistJson(text: string): { literal: Record<string, number>; bitstri
       const id = d === 'T-Tuple Test' ? 'tTuple' : 'lrs';
       const lit = Number(t[id === 'tTuple' ? 'tTupleRes' : 'lrsRes']);
       const bin = Number(t[id === 'tTuple' ? 'binTTupleRes' : 'binLrsRes']);
-      if (lit >= 0) literal[id] = lit;
-      if (bin >= 0) bitstring[id] = bin;
+      if (lit >= 0) {literal[id] = lit;}
+      if (bin >= 0) {bitstring[id] = bin;}
     } else if (map[d]) {
-      if (t.hOriginal !== undefined) literal[map[d]] = Number(t.hOriginal);
-      if (t.hBitstring !== undefined) bitstring[map[d]] = Number(t.hBitstring);
+      if (t.hOriginal !== undefined) {literal[map[d]] = Number(t.hOriginal);}
+      if (t.hBitstring !== undefined) {bitstring[map[d]] = Number(t.hBitstring);}
     }
   }
   return { literal, bitstring, hAssessed };

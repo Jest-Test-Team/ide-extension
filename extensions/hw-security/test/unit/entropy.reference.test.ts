@@ -38,14 +38,14 @@ it.runIf(!!tool)('regenerates NIST reference values', () => {
       if (desc === 'Overall') {
         overall = t;
       } else if (desc === 'T-Tuple Test') {
-        if (t.tTupleRes !== undefined && Number(t.tTupleRes) >= 0) literal.tTuple = Number(t.tTupleRes);
-        if (t.binTTupleRes !== undefined && Number(t.binTTupleRes) >= 0) bitstring.tTuple = Number(t.binTTupleRes);
+        if (t.tTupleRes !== undefined && Number(t.tTupleRes) >= 0) {literal.tTuple = Number(t.tTupleRes);}
+        if (t.binTTupleRes !== undefined && Number(t.binTTupleRes) >= 0) {bitstring.tTuple = Number(t.binTTupleRes);}
       } else if (desc === 'LRS Test') {
-        if (t.lrsRes !== undefined && Number(t.lrsRes) >= 0) literal.lrs = Number(t.lrsRes);
-        if (t.binLrsRes !== undefined && Number(t.binLrsRes) >= 0) bitstring.lrs = Number(t.binLrsRes);
+        if (t.lrsRes !== undefined && Number(t.lrsRes) >= 0) {literal.lrs = Number(t.lrsRes);}
+        if (t.binLrsRes !== undefined && Number(t.binLrsRes) >= 0) {bitstring.lrs = Number(t.binLrsRes);}
       } else if (DESC[desc]) {
-        if (t.hOriginal !== undefined) literal[DESC[desc][0]] = Number(t.hOriginal);
-        if (t.hBitstring !== undefined) bitstring[DESC[desc][1]] = Number(t.hBitstring);
+        if (t.hOriginal !== undefined) {literal[DESC[desc][0]] = Number(t.hOriginal);}
+        if (t.hBitstring !== undefined) {bitstring[DESC[desc][1]] = Number(t.hBitstring);}
       }
     }
     out[v.name] = { wordSize: v.wordSize, literal, bitstring, hOriginal: overall.hOriginal, hBitstring: overall.hBitstring, hAssessed: overall.hAssessed };
