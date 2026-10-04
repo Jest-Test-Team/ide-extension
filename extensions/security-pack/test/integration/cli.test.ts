@@ -15,7 +15,8 @@ suite('command-line tool', () => {
     const out = process.platform === 'win32'
       ? execFileSync('cmd.exe', ['/c', shim, '--version'], { encoding: 'utf8' })
       : execFileSync(shim, ['--version'], { encoding: 'utf8' });
-    assert.strictEqual(out.trim(), '0.1.0');
+    const expected = (vscode.extensions.getExtension('jest-test-team.security-pack')!.packageJSON as { version: string }).version;
+    assert.strictEqual(out.trim(), expected);
     const removed = (await vscode.commands.executeCommand('securityPack.uninstallCli', { dir })) as string[];
     assert.deepStrictEqual(removed, paths);
     assert.ok(!existsSync(shim));
