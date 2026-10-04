@@ -1,0 +1,28 @@
+{
+  "name": "endpoint-security",
+  "displayName": "Endpoint Security & Compliance Toolkit",
+  "description": "WFP / ETW / macOS Endpoint Security API validation, PCI DSS 4.0.1 & CCSP compliance scanning, and process-tree detection simulation.",
+  "version": "0.1.0",
+  "publisher": "jest-test-team",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/Jest-Test-Team/ide-extension.git", "directory": "extensions/endpoint-security" },
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Linters", "Programming Languages", "Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      { "command": "endpointSecurity.hello", "title": "Hello", "category": "Endpoint Security & Compliance Toolkit" }
+    ]
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-extension.mjs",
+    "watch": "node ../../scripts/build-extension.mjs --watch",
+    "vscode:prepublish": "node ../../scripts/build-extension.mjs --production",
+    "test:integration": "npm run build && tsc -p tsconfig.test.json && vscode-test",
+    "package": "node -e \"require('fs').mkdirSync('../../vsix',{recursive:true})\" && vsce package --no-dependencies --out ../../vsix/"
+  },
+  "devDependencies": {
+    "@ide-ext/core": "*"
+  }
+}

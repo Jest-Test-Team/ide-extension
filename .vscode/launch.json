@@ -1,0 +1,44 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Endpoint Security",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/extensions/endpoint-security",
+        "${workspaceFolder}/extensions/endpoint-security/test/fixtures"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/extensions/endpoint-security/dist/**/*.js"
+      ],
+      "preLaunchTask": "build endpoint-security"
+    },
+    {
+      "name": "Run Julia Profiler",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/extensions/julia-profiler",
+        "${workspaceFolder}/extensions/julia-profiler/test/fixtures"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/extensions/julia-profiler/dist/**/*.js"
+      ],
+      "preLaunchTask": "build julia-profiler"
+    },
+    {
+      "name": "Run HW Security",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/extensions/hw-security",
+        "${workspaceFolder}/extensions/hw-security/test/fixtures"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/extensions/hw-security/dist/**/*.js"
+      ],
+      "preLaunchTask": "build hw-security"
+    }
+  ]
+}

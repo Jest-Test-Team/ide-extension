@@ -1,0 +1,30 @@
+{
+  "name": "ide-extension",
+  "private": true,
+  "description": "Monorepo for security & systems VS Code extensions",
+  "workspaces": [
+    "packages/*",
+    "extensions/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "tsc -p packages/core && tsc -p extensions/endpoint-security && tsc -p extensions/julia-profiler && tsc -p extensions/hw-security",
+    "lint": "eslint packages extensions",
+    "test": "vitest run",
+    "test:integration": "npm run test:integration --workspaces --if-present",
+    "package": "npm run package --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}

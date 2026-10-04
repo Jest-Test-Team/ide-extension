@@ -1,0 +1,16 @@
+{
+  "name": "@ide-ext/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared parsing, rule engine, diagnostics and webview helpers for the ide-extension extensions.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./vscode": "./src/vscode/index.ts"
+  },
+  "dependencies": {
+    "web-tree-sitter": "^0.25.0",
+    "yaml": "^2.6.0"
+  }
+}

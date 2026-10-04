@@ -1,0 +1,28 @@
+{
+  "name": "julia-profiler",
+  "displayName": "Julia Invalidation & Compiler Profiler",
+  "description": "Visualise SnoopCompile.jl invalidations and inference time, lint invalidation-prone code, and compare benchmarks.",
+  "version": "0.1.0",
+  "publisher": "jest-test-team",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/Jest-Test-Team/ide-extension.git", "directory": "extensions/julia-profiler" },
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Linters", "Visualization", "Programming Languages"],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      { "command": "juliaProfiler.hello", "title": "Hello", "category": "Julia Invalidation & Compiler Profiler" }
+    ]
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-extension.mjs",
+    "watch": "node ../../scripts/build-extension.mjs --watch",
+    "vscode:prepublish": "node ../../scripts/build-extension.mjs --production",
+    "test:integration": "npm run build && tsc -p tsconfig.test.json && vscode-test",
+    "package": "node -e \"require('fs').mkdirSync('../../vsix',{recursive:true})\" && vsce package --no-dependencies --out ../../vsix/"
+  },
+  "devDependencies": {
+    "@ide-ext/core": "*"
+  }
+}
