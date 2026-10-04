@@ -12,7 +12,7 @@ Three VS Code extensions for security and systems engineering, plus an extension
 
 Shared code lives in [`packages/core`](packages/core): a web-tree-sitter host, the declarative rule engine (tree-sitter queries, regex/absent rules and code rules — every rule cites its sources), diagnostics with quick fixes and suppressions, SARIF/Markdown reports, and webview helpers. Each extension bundles it with esbuild.
 
-**Languages:** [English](#install--use) · [繁體中文](#安裝與使用)
+**Languages:** [English](#install--use) · [繁體中文](#安裝與使用) · CLI guide: [English](#cli-step-by-step) · [繁體中文](#命令列工具逐步教學)
 
 ## Install & use
 
@@ -118,7 +118,175 @@ jest-security scan . -o security.sarif                    # every rule set, one 
 **Output:**
 - Every command has `--help`, and the lint-style commands support `--format text|json|sarif|md` and `--out`.
 - **Exit codes:** `0` clean, `1` findings at or above `--fail-on` (or a failed test / threshold), `2` usage or runtime error. This makes the commands CI gates.
-- Full reference: [`packages/cli/README.md`](packages/cli/README.md).
+- Full reference: [`packages/cli/README.md`](packages/cli/README.md). New to the CLI? Follow [CLI step by step](#cli-step-by-step).
+
+### CLI step by step
+
+#### Step 1 — Install the commands (choose one way)
+
+**Option A — from VS Code (recommended, no Node.js needed)**
+
+1. Install the extensions (see [Install](#install)).
+2. Press **⌘⇧P** (Ctrl+Shift+P) and run the install command for each tool you want:
+
+   | Command Palette entry | Installs |
+   |---|---|
+   | *Endpoint Security: Install 'jest-endpoint' Command in PATH* | `jest-endpoint` |
+   | *HW Security: Install 'jest-hw / jest-embedded' Command in PATH* | `jest-hw`, `jest-embedded` |
+   | *Julia Profiler: Install 'jest-julia' Command in PATH* | `jest-julia` |
+   | *Security Pack: Install 'jest-security' Command in PATH* | `jest-security` (all tools) |
+
+3. The commands are written to `~/.local/bin` (macOS/Linux) or `%LOCALAPPDATA%\Programs\jest-cli` (Windows).
+   If VS Code says the folder is not on your PATH, click **Copy Command** and add the line to your shell profile:
+
+   ```bash
+   # macOS (zsh) — Linux: use ~/.bashrc
+   echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+   On Windows, run the copied `setx PATH …` line, then open a new terminal.
+
+**Option B — from this repository (needs Node.js 20+)**
+
+```bash
+git clone https://github.com/Jest-Test-Team/ide-extension.git
+cd ide-extension
+npm install
+npm run build -w @jest-test-team/security-cli
+npm install -g ./packages/cli      # links jest-endpoint, jest-hw, jest-embedded, jest-julia, jest-security
+```
+
+To use the tools without a global install, run them directly: `node packages/cli/dist/jest-security.js --help`.
+
+**Option C — from npm (once the package is published)**
+
+```bash
+npm install -g @jest-test-team/security-cli
+```
+
+#### Step 2 — Check the installation
+
+Open a **new** terminal, then:
+
+```bash
+jest-security --version
+jest-security doctor          # ✔ for every bundled data folder; shows whether julia and git were found
+jest-endpoint --help          # list of commands; "jest-endpoint <command> --help" shows the options
+```
+
+#### Step 3 — Try every tool on the sample files
+
+Run these from the root of this repository; every path points to a sample file that ships with it.
+
+**Endpoint Security (`jest-endpoint`)**
+
+```bash
+# 1. WFP / ETW / Endpoint Security API misuse in C, C++ and Rust → exit code 1 (errors found)
+jest-endpoint lint extensions/endpoint-security/test/fixtures/agent
+
+# 2. PCI DSS 4.0.1 / CCSP compliance of Go and TypeScript code, as a SARIF file
+jest-endpoint compliance extensions/endpoint-security/test/fixtures/backend --format sarif --out compliance.sarif
+
+# 3. Replay a ransomware scenario: process tree, 10 detections, timeline (nothing is executed)
+jest-endpoint simulate extensions/endpoint-security/test/fixtures/scenarios/ransom.ptree.yaml --expect mass-file-encryption
+
+# 4. Look up an API, or list all known ones
+jest-endpoint api OpenTraceW
+jest-endpoint api --list
+
+# 5. Risk-scan the VS Code / Cursor extensions installed on this machine (read-only)
+jest-endpoint extensions
+```
+
+**Embedded Hardware Security (`jest-hw`, alias `jest-embedded`)**
+
+```bash
+# 1. ESP32 C code, sdkconfig and ESPHome YAML → 26 problems in the samples
+jest-hw lint extensions/hw-security/test/fixtures/esp-app extensions/hw-security/test/fixtures/esphome
+
+# 2. NIST SP 800-90B entropy of a noise-source dump → "Assessed min-entropy: 5.860894 bits/sample"
+jest-hw entropy extensions/hw-security/test/fixtures/entropy/rand8_short.bin --bits 8
+
+# 3. PUF quality (uniformity, uniqueness, reliability…) and the ECC needed
+jest-hw puf extensions/hw-security/test/fixtures/puf/sram.csv
+
+# 4. Side-channel tags between firmware and ChipWhisperer scripts → exit 1: one reference has no tag
+jest-hw sca extensions/hw-security/test/fixtures/sca
+```
+
+**Julia Profiler (`jest-julia`)**
+
+```bash
+# 1. Invalidation / inference problems in Julia code (warnings → exit code 0 unless --fail-on warning)
+jest-julia lint extensions/julia-profiler/test/fixtures/InvDemo
+
+# 2. Summarise a recorded SnoopCompile profile
+jest-julia report extensions/julia-profiler/test/fixtures/invdemo.profile.json
+
+# 3. With Julia installed: profile a real package, then compare benchmarks with git HEAD
+cd extensions/julia-profiler/test/fixtures/InvDemo
+jest-julia analyze --out profile.json        # first run installs SnoopCompile into ~/.cache/jest-julia
+jest-julia bench --baseline HEAD --seconds 0.2
+cd -
+```
+
+**Everything at once (`jest-security`)**
+
+```bash
+jest-security lint extensions --format md --out findings.md      # all rule sets, Markdown report
+jest-security scan extensions --out security.sarif               # all rule sets, one SARIF file
+jest-security hw entropy extensions/hw-security/test/fixtures/entropy/rand8_short.bin --bits 8   # any sub-tool
+```
+
+#### Step 4 — Use it on your own project
+
+```bash
+cd ~/my-project
+jest-security lint .                          # human-readable report
+jest-security lint . --fail-on warning        # stricter: warnings also fail
+jest-endpoint lint . --disable edr/etw-broad-enable --rule-pack team-rules.yaml
+```
+
+- **Formats:** `--format text` (default), `json`, `sarif` or `md`; add `--out <file>` to write to a file.
+- **Exit codes:** `0` = clean, `1` = findings at or above `--fail-on` or a failed check, `2` = wrong usage or error.
+- **Ignore one line:** put `// ide-ext-ignore-next-line <rule-id>` above it (`#` in Julia / YAML / sdkconfig).
+
+#### Step 5 — Run it in CI (GitHub Actions)
+
+```yaml
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write        # needed to upload SARIF
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g @jest-test-team/security-cli
+      - run: jest-security scan . --out security.sarif --fail-on none
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: security.sarif
+      - run: jest-hw entropy firmware/trng-dump.bin --bits 8 --min 7.5   # optional gate
+```
+
+#### Step 6 — Update or uninstall
+
+- **VS Code commands:** after an extension update the command is refreshed automatically. To remove it, run *… Uninstall '<tool>' Command* from the Command Palette; it deletes only files it created.
+- **npm:** `npm update -g @jest-test-team/security-cli` / `npm uninstall -g @jest-test-team/security-cli`.
+
+#### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `command not found: jest-…` | Open a new terminal; check `echo $PATH` contains `~/.local/bin` (Option A) or your npm global bin (`npm prefix -g`). |
+| `cannot find the "grammars" data folder` | The bundled data is missing: reinstall, or set `JEST_ASSETS` to a folder with `grammars/`, `rules/`, `ptree/`, `extscan/`, `scripts/`. |
+| `Julia not found` | Install Julia (`brew install julia` or juliaup) or pass `--julia /path/to/julia` (or set `$JULIA`). |
+| `bench`: *not a git repository* | Run inside a git checkout, or use `--baseline none`. |
+| `restart`: *must contain 1000 × 1000 samples* | Restart data is 1000 restarts × 1000 samples, row-major; use `--rows` for a smaller square matrix. |
 
 ## 安裝與使用
 
@@ -224,7 +392,175 @@ jest-security scan . -o security.sarif                    # 所有規則，輸�
 **輸出：**
 - 每個指令都支援 `--help`；檢查類命令支援 `--format text|json|sarif|md` 與 `--out`。
 - **結束碼**：`0` 無問題；`1` 有達到 `--fail-on` 門檻的問題（或測試、門檻未通過）；`2` 用法或執行錯誤。因此可直接作為 CI 關卡。
-- 完整說明：[`packages/cli/README.md`](packages/cli/README.md)。
+- 完整說明：[`packages/cli/README.md`](packages/cli/README.md)。第一次使用？請參考[命令列工具：逐步教學](#命令列工具逐步教學)。
+
+### 命令列工具：逐步教學
+
+#### 步驟 1 — 安裝指令（三選一）
+
+**方式 A — 從 VS Code 安裝（建議，不需要 Node.js）**
+
+1. 先安裝擴充套件（見[安裝](#安裝)）。
+2. 按 **⌘⇧P**（Ctrl+Shift+P），執行想要的工具的安裝命令：
+
+   | 命令選擇區項目 | 安裝的指令 |
+   |---|---|
+   | *Endpoint Security: Install 'jest-endpoint' Command in PATH* | `jest-endpoint` |
+   | *HW Security: Install 'jest-hw / jest-embedded' Command in PATH* | `jest-hw`、`jest-embedded` |
+   | *Julia Profiler: Install 'jest-julia' Command in PATH* | `jest-julia` |
+   | *Security Pack: Install 'jest-security' Command in PATH* | `jest-security`（所有工具） |
+
+3. 指令會寫入 `~/.local/bin`（macOS/Linux）或 `%LOCALAPPDATA%\Programs\jest-cli`（Windows）。
+   若 VS Code 提示該資料夾不在 PATH 中，點選 **Copy Command**，並把設定加入 shell 設定檔：
+
+   ```bash
+   # macOS（zsh）— Linux 請改用 ~/.bashrc
+   echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+   Windows 請執行複製的 `setx PATH …`，再開啟新的終端機。
+
+**方式 B — 從本 repo 安裝（需要 Node.js 20 以上）**
+
+```bash
+git clone https://github.com/Jest-Test-Team/ide-extension.git
+cd ide-extension
+npm install
+npm run build -w @jest-test-team/security-cli
+npm install -g ./packages/cli      # 建立 jest-endpoint、jest-hw、jest-embedded、jest-julia、jest-security 指令
+```
+
+若不想全域安裝，也可以直接執行：`node packages/cli/dist/jest-security.js --help`。
+
+**方式 C — 從 npm 安裝（套件發佈後）**
+
+```bash
+npm install -g @jest-test-team/security-cli
+```
+
+#### 步驟 2 — 確認安裝
+
+開啟**新的**終端機，然後執行：
+
+```bash
+jest-security --version
+jest-security doctor          # 每個內建資料夾都應顯示 ✔，並列出是否找到 julia 與 git
+jest-endpoint --help          # 列出子命令；「jest-endpoint <子命令> --help」顯示選項
+```
+
+#### 步驟 3 — 用範例檔試用每個工具
+
+請在本 repo 根目錄執行以下指令；路徑都指向 repo 內附的範例檔。
+
+**端點安全（`jest-endpoint`）**
+
+```bash
+# 1. C / C++ / Rust 中 WFP / ETW / Endpoint Security API 的誤用 → 結束碼 1（有錯誤）
+jest-endpoint lint extensions/endpoint-security/test/fixtures/agent
+
+# 2. Go 與 TypeScript 程式碼的 PCI DSS 4.0.1 / CCSP 合規檢查，輸出 SARIF 檔
+jest-endpoint compliance extensions/endpoint-security/test/fixtures/backend --format sarif --out compliance.sarif
+
+# 3. 重播勒索軟體情境：程序樹、10 個偵測結果、時間軸（不會執行任何程式）
+jest-endpoint simulate extensions/endpoint-security/test/fixtures/scenarios/ransom.ptree.yaml --expect mass-file-encryption
+
+# 4. 查詢 API 說明，或列出所有支援的 API
+jest-endpoint api OpenTraceW
+jest-endpoint api --list
+
+# 5. 掃描本機已安裝的 VS Code / Cursor 擴充套件風險（唯讀）
+jest-endpoint extensions
+```
+
+**嵌入式硬體安全（`jest-hw`，別名 `jest-embedded`）**
+
+```bash
+# 1. ESP32 C 程式碼、sdkconfig 與 ESPHome YAML → 範例共有 26 個問題
+jest-hw lint extensions/hw-security/test/fixtures/esp-app extensions/hw-security/test/fixtures/esphome
+
+# 2. 雜訊源資料的 NIST SP 800-90B 熵評估 →「Assessed min-entropy: 5.860894 bits/sample」
+jest-hw entropy extensions/hw-security/test/fixtures/entropy/rand8_short.bin --bits 8
+
+# 3. PUF 品質（均勻性、唯一性、可靠度…）與所需的錯誤更正能力
+jest-hw puf extensions/hw-security/test/fixtures/puf/sram.csv
+
+# 4. 韌體與 ChipWhisperer 腳本間的旁通道標記 → 結束碼 1：有一個引用找不到對應標記
+jest-hw sca extensions/hw-security/test/fixtures/sca
+```
+
+**Julia 分析器（`jest-julia`）**
+
+```bash
+# 1. Julia 程式碼的失效 / 型別推導問題（只有警告時結束碼為 0，除非加上 --fail-on warning）
+jest-julia lint extensions/julia-profiler/test/fixtures/InvDemo
+
+# 2. 摘要已錄製的 SnoopCompile 分析結果
+jest-julia report extensions/julia-profiler/test/fixtures/invdemo.profile.json
+
+# 3. 已安裝 Julia 時：分析實際套件，並與 git HEAD 比較效能
+cd extensions/julia-profiler/test/fixtures/InvDemo
+jest-julia analyze --out profile.json        # 第一次執行會把 SnoopCompile 安裝到 ~/.cache/jest-julia
+jest-julia bench --baseline HEAD --seconds 0.2
+cd -
+```
+
+**一次執行全部（`jest-security`）**
+
+```bash
+jest-security lint extensions --format md --out findings.md      # 所有規則，輸出 Markdown 報告
+jest-security scan extensions --out security.sarif               # 所有規則，輸出單一 SARIF 檔
+jest-security hw entropy extensions/hw-security/test/fixtures/entropy/rand8_short.bin --bits 8   # 也可呼叫任一子工具
+```
+
+#### 步驟 4 — 用在自己的專案
+
+```bash
+cd ~/my-project
+jest-security lint .                          # 易讀的文字報告
+jest-security lint . --fail-on warning        # 更嚴格：有警告也視為失敗
+jest-endpoint lint . --disable edr/etw-broad-enable --rule-pack team-rules.yaml
+```
+
+- **輸出格式**：`--format text`（預設）、`json`、`sarif` 或 `md`；加上 `--out <檔案>` 可寫入檔案。
+- **結束碼**：`0` 無問題；`1` 有達到 `--fail-on` 門檻的問題或檢查未通過；`2` 用法錯誤或執行錯誤。
+- **忽略單行**：在該行上方加上 `// ide-ext-ignore-next-line <規則 ID>`（Julia / YAML / sdkconfig 使用 `#`）。
+
+#### 步驟 5 — 在 CI 中使用（GitHub Actions）
+
+```yaml
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write        # 上傳 SARIF 需要此權限
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g @jest-test-team/security-cli
+      - run: jest-security scan . --out security.sarif --fail-on none
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: security.sarif
+      - run: jest-hw entropy firmware/trng-dump.bin --bits 8 --min 7.5   # 選用的熵值門檻
+```
+
+#### 步驟 6 — 更新或移除
+
+- **VS Code 安裝的指令**：擴充套件更新後會自動更新指令。要移除時，在命令選擇區執行 *… Uninstall '<tool>' Command*；它只會刪除自己建立的檔案。
+- **npm**：`npm update -g @jest-test-team/security-cli` / `npm uninstall -g @jest-test-team/security-cli`。
+
+#### 疑難排解
+
+| 問題 | 解決方式 |
+|---|---|
+| `command not found: jest-…` | 開啟新的終端機；確認 `echo $PATH` 包含 `~/.local/bin`（方式 A）或 npm 全域 bin 目錄（`npm prefix -g`）。 |
+| `cannot find the "grammars" data folder` | 內建資料遺失：請重新安裝，或把 `JEST_ASSETS` 設為包含 `grammars/`、`rules/`、`ptree/`、`extscan/`、`scripts/` 的資料夾。 |
+| `Julia not found` | 安裝 Julia（`brew install julia` 或 juliaup），或使用 `--julia /path/to/julia`（或設定 `$JULIA`）。 |
+| `bench` 顯示 *not a git repository* | 請在 git 專案中執行，或使用 `--baseline none`。 |
+| `restart` 顯示 *must contain 1000 × 1000 samples* | 重啟資料需為 1000 次重啟 × 每次 1000 個樣本（逐列排列）；較小的方陣請用 `--rows`。 |
 
 ## Development
 
