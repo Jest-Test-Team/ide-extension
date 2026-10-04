@@ -9,8 +9,8 @@ import { ESP32_RULES } from '../../../extensions/hw-security/src/esp32Rules';
 import { scaCandidate } from '../../../extensions/hw-security/src/sca/heuristics';
 import { runTool, UsageError, VERSION, type Command, type Io, type Tool } from './lib/args';
 import { collectFiles } from './lib/files';
-import { lintCommand } from './lib/lint';
-import { emit, REPORT_FLAGS } from './lib/output';
+import { lintCommand, patternsFrom } from './lib/lint';
+import { emit, LINT_FLAGS, REPORT_FLAGS } from './lib/output';
 
 export const hwRules = () => [...ESP32_RULES, scaCandidate];
 
@@ -147,10 +147,10 @@ const sca: Command = {
   name: 'sca',
   summary: 'List ChipWhisperer side-channel points: @sca(id, "…") tags in firmware and @sca-ref(id) in analysis scripts',
   args: '[paths…]',
-  flags: { ...JSON_FLAG },
+  flags: { ...JSON_FLAG, ignore: LINT_FLAGS.ignore, 'ignore-file': LINT_FLAGS['ignore-file'] },
   examples: ['jest-hw sca firmware/ analysis/', 'jest-hw sca . --json'],
   async run({ positionals, flags }, io) {
-    const files = collectFiles(positionals, io.cwd, (lang, path) => SCA_LANGS.has(lang) && /\.(c|h|cc|cpp|hpp|ino|s|py)$/i.test(path));
+    const files = collectFiles(positionals, io.cwd, (lang, path) => SCA_LANGS.has(lang) && /\.(c|h|cc|cpp|hpp|ino|s|py)$/i.test(path), undefined, patternsFrom(flags, io));
     const tags: (TagOccurrence & { file: string })[] = [];
     for (const f of files) {
       for (const t of scanTags(f.rel, readFileSync(f.path, 'utf8'), ['sca', 'sca-ref'])) {

@@ -21,10 +21,10 @@ Shared code lives in [`packages/core`](packages/core): a web-tree-sitter host, t
 Build the packages with `npm install && npm run package`, then install them. Install the three extensions first and the pack last: the pack refers to the others by Marketplace ID, so on its own it would try to download them from the Marketplace.
 
 ```bash
-code --install-extension vsix/endpoint-security-0.3.0.vsix
-code --install-extension vsix/julia-profiler-0.2.0.vsix
-code --install-extension vsix/hw-security-0.2.0.vsix
-code --install-extension vsix/security-pack-0.2.0.vsix   # optional
+code --install-extension vsix/endpoint-security-0.3.1.vsix
+code --install-extension vsix/julia-profiler-0.2.1.vsix
+code --install-extension vsix/hw-security-0.2.1.vsix
+code --install-extension vsix/security-pack-0.2.1.vsix   # optional
 ```
 
 You can also use the Extensions view → `…` → **Install from VSIX…**.
@@ -250,7 +250,8 @@ jest-endpoint lint . --disable edr/etw-broad-enable --rule-pack team-rules.yaml
 
 - **Formats:** `--format text` (default), `json`, `sarif` or `md`; add `--out <file>` to write to a file.
 - **Exit codes:** `0` = clean, `1` = findings at or above `--fail-on` or a failed check, `2` = wrong usage or error.
-- **Ignore one line:** put `// ide-ext-ignore-next-line <rule-id>` above it (`#` in Julia / YAML / sdkconfig).
+- **Ignore one line:** put `// ide-ext-ignore-next-line <rule-id>` above it (`#` in Julia / YAML / sdkconfig). For a whole file, add `// ide-ext-ignore-file <rule-id>` anywhere in it.
+- **Skip folders:** create a `.jestignore` (gitignore syntax) in the folder you run the command from, or pass `--ignore 'vendor/**'`. Paths you name explicitly are always scanned; `--no-ignore-file` turns the file off.
 
 #### Step 5 — Run it in CI (GitHub Actions)
 
@@ -282,7 +283,10 @@ jobs:
 
 | Problem | Fix |
 |---|---|
-| `command not found: jest-…` | Open a new terminal; check `echo $PATH` contains `~/.local/bin` (Option A) or your npm global bin (`npm prefix -g`). |
+| `command not found: jest-…` right after installing | zsh caches the commands it knows: run `rehash` (or `hash -r` in bash), or open a new terminal. |
+| `command not found: jest-…` in a new terminal | Check that `echo $PATH` contains `~/.local/bin` (Option A) or your npm global bin (`npm prefix -g`), and that the file exists: `ls ~/.local/bin/jest-*`. If it's missing, run the *Install '…' Command in PATH* entry again (reload the VS Code window first after updating the extensions). |
+| `code --install-extension` didn't update VS Code | Your `code` command may belong to another editor (`ls -l $(which code)`; e.g. Cursor). Use VS Code's own CLI: `"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" --install-extension …`. |
+| Findings from sample or vendored code | List folders to skip in a `.jestignore` file (gitignore syntax) or pass `--ignore <glob>`; this repo's `.jestignore` skips `test/fixtures`. |
 | `cannot find the "grammars" data folder` | The bundled data is missing: reinstall, or set `JEST_ASSETS` to a folder with `grammars/`, `rules/`, `ptree/`, `extscan/`, `scripts/`. |
 | `Julia not found` | Install Julia (`brew install julia` or juliaup) or pass `--julia /path/to/julia` (or set `$JULIA`). |
 | `bench`: *not a git repository* | Run inside a git checkout, or use `--baseline none`. |
@@ -295,10 +299,10 @@ jobs:
 先執行 `npm install && npm run package` 產生安裝檔，再進行安裝。請先安裝三個擴充套件，最後才裝 Pack：Pack 以 Marketplace ID 引用其他三個套件，若單獨安裝，它會嘗試從 Marketplace 下載。
 
 ```bash
-code --install-extension vsix/endpoint-security-0.3.0.vsix
-code --install-extension vsix/julia-profiler-0.2.0.vsix
-code --install-extension vsix/hw-security-0.2.0.vsix
-code --install-extension vsix/security-pack-0.2.0.vsix   # 選用
+code --install-extension vsix/endpoint-security-0.3.1.vsix
+code --install-extension vsix/julia-profiler-0.2.1.vsix
+code --install-extension vsix/hw-security-0.2.1.vsix
+code --install-extension vsix/security-pack-0.2.1.vsix   # 選用
 ```
 
 也可以在「擴充功能」檢視中點選 `…` → **從 VSIX 安裝…**。
@@ -524,7 +528,8 @@ jest-endpoint lint . --disable edr/etw-broad-enable --rule-pack team-rules.yaml
 
 - **輸出格式**：`--format text`（預設）、`json`、`sarif` 或 `md`；加上 `--out <檔案>` 可寫入檔案。
 - **結束碼**：`0` 無問題；`1` 有達到 `--fail-on` 門檻的問題或檢查未通過；`2` 用法錯誤或執行錯誤。
-- **忽略單行**：在該行上方加上 `// ide-ext-ignore-next-line <規則 ID>`（Julia / YAML / sdkconfig 使用 `#`）。
+- **忽略單行**：在該行上方加上 `// ide-ext-ignore-next-line <規則 ID>`（Julia / YAML / sdkconfig 使用 `#`）。整個檔案則可在任意位置加上 `// ide-ext-ignore-file <規則 ID>`。
+- **略過資料夾**：在執行指令的資料夾中建立 `.jestignore`（與 .gitignore 相同語法），或使用 `--ignore 'vendor/**'`。明確指定的路徑一定會掃描；`--no-ignore-file` 可停用該檔案。
 
 #### 步驟 5 — 在 CI 中使用（GitHub Actions）
 
@@ -556,7 +561,10 @@ jobs:
 
 | 問題 | 解決方式 |
 |---|---|
-| `command not found: jest-…` | 開啟新的終端機；確認 `echo $PATH` 包含 `~/.local/bin`（方式 A）或 npm 全域 bin 目錄（`npm prefix -g`）。 |
+| 剛安裝完就出現 `command not found: jest-…` | zsh 會快取已知指令：執行 `rehash`（bash 為 `hash -r`），或開啟新的終端機。 |
+| 新終端機中仍出現 `command not found: jest-…` | 確認 `echo $PATH` 包含 `~/.local/bin`（方式 A）或 npm 全域 bin 目錄（`npm prefix -g`），並確認檔案存在：`ls ~/.local/bin/jest-*`。若不存在，請再次執行 *Install '…' Command in PATH*（更新擴充套件後請先重新載入 VS Code 視窗）。 |
+| `code --install-extension` 沒有更新 VS Code | 你的 `code` 指令可能屬於其他編輯器（用 `ls -l $(which code)` 檢查，例如 Cursor）。請改用 VS Code 本身的 CLI：`"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" --install-extension …`。 |
+| 範例或第三方程式碼被掃描出問題 | 在 `.jestignore`（與 .gitignore 相同語法）中列出要略過的資料夾，或使用 `--ignore <glob>`；本 repo 的 `.jestignore` 會略過 `test/fixtures`。 |
 | `cannot find the "grammars" data folder` | 內建資料遺失：請重新安裝，或把 `JEST_ASSETS` 設為包含 `grammars/`、`rules/`、`ptree/`、`extscan/`、`scripts/` 的資料夾。 |
 | `Julia not found` | 安裝 Julia（`brew install julia` 或 juliaup），或使用 `--julia /path/to/julia`（或設定 `$JULIA`）。 |
 | `bench` 顯示 *not a git repository* | 請在 git 專案中執行，或使用 `--baseline none`。 |

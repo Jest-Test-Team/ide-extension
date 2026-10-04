@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Command, Flags, Io } from './args';
 import { assetDir } from './assets';
-import { collectFiles } from './files';
+import { collectFiles, DEFAULT_IGNORE, ignorePatterns } from './files';
 import { emit, exitFor, failThreshold, formatOf, LINT_FLAGS, renderFindings } from './output';
 
 let host: TreeSitterHost | undefined;
@@ -25,10 +25,13 @@ export function effectiveRules(base: readonly Rule[], flags: Flags, io: Io): Rul
 }
 
 /** Lints files; keys of the result are paths relative to io.cwd. */
-export async function lintFiles(rules: readonly Rule[], inputs: readonly string[], io: Io, quiet = false): Promise<Map<string, Finding[]>> {
+/** Ignore patterns for a command run (from --ignore and .jestignore). */
+export const patternsFrom = (flags: Flags, io: Io) => ignorePatterns(io.cwd, (flags.ignore as string[] | undefined) ?? [], flags['ignore-file'] !== false);
+
+export async function lintFiles(rules: readonly Rule[], inputs: readonly string[], io: Io, quiet = false, patterns: readonly string[] = []): Promise<Map<string, Finding[]>> {
   const engine = new RuleEngine(treeSitter(), [...rules]);
   const wildcard = rules.some((r) => r.languages.includes('*'));
-  const files = collectFiles(inputs, io.cwd, (lang) => wildcard || engine.appliesTo(lang));
+  const files = collectFiles(inputs, io.cwd, (lang) => wildcard || engine.appliesTo(lang), DEFAULT_IGNORE, patterns);
   const out = new Map<string, Finding[]>();
   for (const f of files) {
     let findings = await engine.run({ uri: `file://${f.path}`, path: f.path, languageId: f.languageId, text: readFileSync(f.path, 'utf8') });
@@ -54,7 +57,7 @@ export function lintCommand(opts: { name?: string; summary: string; toolName: st
       const format = formatOf(flags.format);
       const threshold = failThreshold(flags['fail-on']);
       const rules = effectiveRules(opts.rules(flags), flags, io);
-      const findings = await lintFiles(rules, positionals, io, !!flags.quiet);
+      const findings = await lintFiles(rules, positionals, io, !!flags.quiet, patternsFrom(flags, io));
       emit(io, renderFindings(format, io, { toolName: opts.toolName, title: opts.title, rules, findings }), flags.out);
       return exitFor(findings, threshold);
     },

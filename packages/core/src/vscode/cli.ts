@@ -124,11 +124,13 @@ export function registerCliCommands(context: vscode.ExtensionContext, prefix: st
       }
       if (!opts?.dir) {
         if (onPath(dir)) {
-          void vscode.window.showInformationMessage(`Installed ${names} in ${dir}. Open a new terminal and run "${specs[0].name} --help".`);
+          void vscode.window.showInformationMessage(
+            `Installed ${names} in ${dir}. Open a new terminal (or run "rehash" in an open zsh) and run "${specs[0].name} --help".`,
+          );
         } else {
           const line = isWin ? `setx PATH "%PATH%;${dir}"` : `export PATH="${dir.replace(homedir(), '$HOME')}:$PATH"`;
           const pick = await vscode.window.showWarningMessage(
-            `Installed ${names} in ${dir}, which is not on your PATH. Add it${isWin ? '' : ' to your shell profile (~/.zshrc, ~/.bashrc)'}: ${line}`,
+            `Installed ${names} in ${dir}, which is not on your PATH. Add it${isWin ? '' : ' to your shell profile (~/.zshrc, ~/.bashrc), then open a new terminal'}: ${line}`,
             'Copy Command',
           );
           if (pick) {

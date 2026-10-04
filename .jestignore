@@ -1,0 +1,5 @@
+# Paths skipped by jest-security / jest-endpoint / jest-hw / jest-julia when scanning folders.
+# Same syntax as .gitignore. Paths you pass explicitly are always scanned.
+
+# Deliberately vulnerable samples used by the tests and the README walkthrough.
+**/test/fixtures/

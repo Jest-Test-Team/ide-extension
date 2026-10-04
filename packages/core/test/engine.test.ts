@@ -114,6 +114,23 @@ describe('RuleEngine', () => {
     expect(await engine.run(doc('yaml', 'db:\n  password: abc\n'))).toHaveLength(0);
   });
 
+  it('suppresses namespaced rule ids (with a slash)', async () => {
+    const rule = { kind: 'pattern' as const, id: 'esp32/bad', title: 'x', severity: 'warning' as const, languages: ['*'], message: 'm', pattern: 'BAD' };
+    const engine = new RuleEngine(testHost(), [rule]);
+    expect(await engine.run(doc('c', '// ide-ext-ignore-next-line esp32/bad\nBAD\nBAD\n', '/w/s.c'))).toHaveLength(1);
+    expect(await engine.run(doc('c', 'BAD // ide-ext-ignore esp32/bad\n', '/w/t.c'))).toHaveLength(0);
+    expect(await engine.run(doc('c', '// ide-ext-ignore-file esp32/bad\nBAD\nBAD\n', '/w/u.c'))).toHaveLength(0);
+  });
+
+  it('supports file-level suppression and excluded paths', async () => {
+    const rule = { kind: 'pattern' as const, id: 'x', title: 'x', severity: 'warning' as const, languages: ['*'], message: 'm', pattern: 'BAD' };
+    const engine = new RuleEngine(testHost(), [rule, { ...rule, id: 'y' }, { ...rule, id: 'z', excludePathPattern: '\\.test\\.ts$' }]);
+    const text = '// ide-ext-ignore-file x\nBAD\n';
+    expect((await engine.run(doc('typescript', text, '/w/a.ts'))).map((f) => f.ruleId)).toEqual(['y', 'z']);
+    expect((await engine.run(doc('typescript', text, '/w/a.test.ts'))).map((f) => f.ruleId)).toEqual(['y']);
+    expect(await engine.run(doc('typescript', '// ide-ext-ignore-file *\nBAD', '/w/b.ts'))).toEqual([]);
+  });
+
   it('isolates a failing custom rule', async () => {
     const engine = new RuleEngine(testHost(), [
       { kind: 'custom', id: 'boom', title: 'b', severity: 'error', languages: ['c'], message: '', check: () => { throw new Error('x'); } },

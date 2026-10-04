@@ -43,7 +43,7 @@ This section is generated from `--help`.
 ### jest-endpoint
 
 ```text
-jest-endpoint 0.1.0 — Endpoint Security & Compliance Toolkit
+jest-endpoint 0.1.1 — Endpoint Security & Compliance Toolkit
 
 Usage: jest-endpoint <command> [options]
 
@@ -75,6 +75,8 @@ Options:
       --disable <rule-id>                       Turn a rule off (repeatable)
       --rule-pack <file.yaml>                   Add a YAML/JSON rule pack (repeatable)
   -q, --quiet                                   Report errors only
+      --ignore <glob>                           Skip matching files/folders (gitignore-style; also read from .jestignore) (repeatable)
+      --ignore-file                             Read .jestignore in the working directory (--no-ignore-file to skip)
   -h, --help                                    Show this help
 
 Examples:
@@ -99,6 +101,8 @@ Options:
       --disable <rule-id>                       Turn a rule off (repeatable)
       --rule-pack <file.yaml>                   Add a YAML/JSON rule pack (repeatable)
   -q, --quiet                                   Report errors only
+      --ignore <glob>                           Skip matching files/folders (gitignore-style; also read from .jestignore) (repeatable)
+      --ignore-file                             Read .jestignore in the working directory (--no-ignore-file to skip)
   -h, --help                                    Show this help
 
 Examples:
@@ -195,7 +199,7 @@ Examples:
 ### jest-hw
 
 ```text
-jest-hw 0.1.0 — Embedded Hardware Security Workbench (alias: jest-embedded)
+jest-hw 0.1.1 — Embedded Hardware Security Workbench (alias: jest-embedded)
 
 Usage: jest-hw <command> [options]
 
@@ -225,6 +229,8 @@ Options:
       --disable <rule-id>                       Turn a rule off (repeatable)
       --rule-pack <file.yaml>                   Add a YAML/JSON rule pack (repeatable)
   -q, --quiet                                   Report errors only
+      --ignore <glob>                           Skip matching files/folders (gitignore-style; also read from .jestignore) (repeatable)
+      --ignore-file                             Read .jestignore in the working directory (--no-ignore-file to skip)
   -h, --help                                    Show this help
 
 Examples:
@@ -309,9 +315,11 @@ Usage: jest-hw sca [paths…] [options]
 List ChipWhisperer side-channel points: @sca(id, "…") tags in firmware and @sca-ref(id) in analysis scripts
 
 Options:
-      --json        Print the result as JSON
-  -o, --out <file>  Write the report to a file instead of stdout
-  -h, --help        Show this help
+      --json           Print the result as JSON
+  -o, --out <file>     Write the report to a file instead of stdout
+      --ignore <glob>  Skip matching files/folders (gitignore-style; also read from .jestignore) (repeatable)
+      --ignore-file    Read .jestignore in the working directory (--no-ignore-file to skip)
+  -h, --help           Show this help
 
 Examples:
   jest-hw sca firmware/ analysis/
@@ -323,7 +331,7 @@ Examples:
 ### jest-julia
 
 ```text
-jest-julia 0.1.0 — Julia Invalidation & Compiler Profiler
+jest-julia 0.1.1 — Julia Invalidation & Compiler Profiler
 
 Usage: jest-julia <command> [options]
 
@@ -355,6 +363,8 @@ Options:
       --disable <rule-id>                       Turn a rule off (repeatable)
       --rule-pack <file.yaml>                   Add a YAML/JSON rule pack (repeatable)
   -q, --quiet                                   Report errors only
+      --ignore <glob>                           Skip matching files/folders (gitignore-style; also read from .jestignore) (repeatable)
+      --ignore-file                             Read .jestignore in the working directory (--no-ignore-file to skip)
   -h, --help                                    Show this help
 
 Examples:
@@ -444,7 +454,7 @@ Options:
 ### jest-security
 
 ```text
-jest-security 0.1.0 — Security & Systems Engineering Pack — all tools in one command
+jest-security 0.1.1 — Security & Systems Engineering Pack — all tools in one command
 
 Usage: jest-security <command> [options]
 
@@ -479,6 +489,8 @@ Options:
       --disable <rule-id>                       Turn a rule off (repeatable)
       --rule-pack <file.yaml>                   Add a YAML/JSON rule pack (repeatable)
   -q, --quiet                                   Report errors only
+      --ignore <glob>                           Skip matching files/folders (gitignore-style; also read from .jestignore) (repeatable)
+      --ignore-file                             Read .jestignore in the working directory (--no-ignore-file to skip)
   -h, --help                                    Show this help
 
 Examples:
@@ -502,6 +514,8 @@ Options:
       --disable <rule-id>                       Turn a rule off (repeatable)
       --rule-pack <file.yaml>                   Add a YAML/JSON rule pack (repeatable)
   -q, --quiet                                   Report errors only
+      --ignore <glob>                           Skip matching files/folders (gitignore-style; also read from .jestignore) (repeatable)
+      --ignore-file                             Read .jestignore in the working directory (--no-ignore-file to skip)
   -h, --help                                    Show this help
 
 Examples:

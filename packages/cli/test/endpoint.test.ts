@@ -94,3 +94,12 @@ describe('jest-endpoint', () => {
     expect(results.find((r) => r.ext.path.endsWith('benign-lsp'))?.risk.level).toBe('low');
   });
 });
+
+describe('pci/pan-literal', () => {
+  it('skips test PANs in unit-test files but reports them elsewhere', async () => {
+    const io = captureIo(REPO);
+    await main(['compliance', 'packages/core/test', 'extensions/endpoint-security/test/fixtures/backend/payments.go', '--format', 'json'], io);
+    const files = (JSON.parse(io.stdout()) as { file: string; findings: { ruleId: string }[] }[]).filter((f) => f.findings.some((x) => x.ruleId === 'pci/pan-literal'));
+    expect(files.map((f) => f.file)).toEqual(['extensions/endpoint-security/test/fixtures/backend/payments.go']);
+  });
+});

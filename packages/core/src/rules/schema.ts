@@ -35,6 +35,8 @@ interface RuleBase {
   when?: string;
   /** Only run when the document path matches this regex (e.g. `(^|/)sdkconfig(\\.\\w+)?$`). */
   pathPattern?: string;
+  /** Skip documents whose path matches this regex (e.g. unit-test files). */
+  excludePathPattern?: string;
 }
 
 /** Structural rule expressed as a tree-sitter query. */

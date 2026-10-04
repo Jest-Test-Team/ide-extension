@@ -9,7 +9,7 @@ import { JULIA_RULES } from '../../../extensions/julia-profiler/src/rules';
 import { runtimeFindings } from '../../../extensions/julia-profiler/src/runtimeFindings';
 import { runTool, UsageError, VERSION, type Command, type Io, type Tool } from './lib/args';
 import { assetDir } from './lib/assets';
-import { lintFiles, effectiveRules } from './lib/lint';
+import { lintFiles, effectiveRules, patternsFrom } from './lib/lint';
 import { emit, exitFor, failThreshold, formatOf, LINT_FLAGS, renderFindings, REPORT_FLAGS } from './lib/output';
 import { cacheDir, run, which } from './lib/proc';
 import { collectFiles } from './lib/files';
@@ -47,10 +47,11 @@ const lint: Command = {
     const format = formatOf(flags.format);
     const threshold = failThreshold(flags['fail-on']);
     const rules = effectiveRules(JULIA_RULES, flags, io);
-    const findings = await lintFiles(rules, positionals, io, !!flags.quiet);
+    const patterns = patternsFrom(flags, io);
+    const findings = await lintFiles(rules, positionals, io, !!flags.quiet, patterns);
     if (typeof flags.profile === 'string') {
       const profile = parseProfile(readFileSync(resolve(io.cwd, flags.profile), 'utf8'));
-      for (const f of collectFiles(positionals, io.cwd, (lang) => lang === 'julia')) {
+      for (const f of collectFiles(positionals, io.cwd, (lang) => lang === 'julia', undefined, patterns)) {
         const extra: Finding[] = runtimeFindings(profile, f.path, flags.threshold as number);
         if (extra.length) {
           findings.set(f.rel, [...(findings.get(f.rel) ?? []), ...extra]);

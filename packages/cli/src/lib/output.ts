@@ -17,6 +17,8 @@ export const LINT_FLAGS: Record<string, FlagSpec> = {
   disable: { type: 'string', multiple: true, value: '<rule-id>', description: 'Turn a rule off' },
   'rule-pack': { type: 'string', multiple: true, value: '<file.yaml>', description: 'Add a YAML/JSON rule pack' },
   quiet: { type: 'boolean', alias: 'q', description: 'Report errors only' },
+  ignore: { type: 'string', multiple: true, value: '<glob>', description: 'Skip matching files/folders (gitignore-style; also read from .jestignore)' },
+  'ignore-file': { type: 'boolean', description: 'Read .jestignore in the working directory (--no-ignore-file to skip)', default: true },
 };
 
 const RANK: Record<Severity, number> = { error: 3, warning: 2, info: 1, hint: 0 };

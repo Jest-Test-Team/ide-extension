@@ -4,6 +4,9 @@
 # Usage:
 #   julia --startup-file=no --project=<user project> collect.jl <out.json> <tool env dir> [package] [workload.jl]
 #
+# The JSON tree is built from heterogeneous values, so Any containers are intended here:
+# ide-ext-ignore-file julia/untyped-container
+#
 # SnoopCompile is installed into <tool env dir> (a private environment stacked onto LOAD_PATH),
 # so the user's Project.toml / Manifest.toml are never modified.
 
@@ -231,7 +234,7 @@ if tinf !== nothing
     end
 end
 
-result = Dict{String,Any}(
+const result = Dict{String,Any}(
     "version" => 1,
     "julia" => string(VERSION),
     "project" => something(Base.active_project(), ""),

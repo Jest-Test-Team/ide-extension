@@ -88,7 +88,7 @@ function validateRule(r: unknown): string[] {
   } else if (typeof rule.pattern !== 'string') {
     problems.push(`"pattern" is required for ${kind} rules`);
   }
-  for (const key of ['pattern', 'anchor', 'unless', 'when', 'pathPattern']) {
+  for (const key of ['pattern', 'anchor', 'unless', 'when', 'pathPattern', 'excludePathPattern']) {
     if (typeof rule[key] === 'string') {
       try {
         new RegExp(rule[key] as string);

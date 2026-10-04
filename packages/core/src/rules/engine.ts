@@ -15,10 +15,12 @@ export interface SourceDocument {
 
 /**
  * Comment directives honoured by every rule:
- *   `ide-ext-ignore-next-line <rule-id>[, <rule-id>]` and `ide-ext-ignore <rule-id>` (same line).
- * `*` disables all rules for that line.
+ *   `ide-ext-ignore-next-line <rule-id>[, <rule-id>]` and `ide-ext-ignore <rule-id>` (same line);
+ *   `ide-ext-ignore-file <rule-id>[, <rule-id>]` anywhere in the file disables those rules for it.
+ * `*` disables all rules for that line (or file).
  */
-const SUPPRESS_RE = /ide-ext-ignore(-next-line)?\s+([\w*.,\t -]+)/g;
+const SUPPRESS_RE = /ide-ext-ignore(-next-line)?\s+([\w*.,/\t -]+)/g;
+const SUPPRESS_FILE_RE = /ide-ext-ignore-file\s+([\w*.,/\t -]+)/g;
 
 function isNode(x: Node | Range): x is Node {
   return typeof (x as Node).startIndex === 'number';
@@ -55,6 +57,7 @@ export class RuleEngine {
       (r) =>
         (r.languages.includes('*') || r.languages.includes(doc.languageId)) &&
         (!r.pathPattern || new RegExp(r.pathPattern).test(doc.path.replace(/\\/g, '/'))) &&
+        (!r.excludePathPattern || !new RegExp(r.excludePathPattern).test(doc.path.replace(/\\/g, '/'))) &&
         (!r.unless || !new RegExp(r.unless, 'm').test(doc.text)) &&
         (!r.when || new RegExp(r.when, 'm').test(doc.text)),
     );
@@ -216,6 +219,17 @@ function applySuppressions(findings: Finding[], lines: LineIndex): Finding[] {
   if (!/ide-ext-ignore/.test(lines.text)) {
     return findings;
   }
+  const fileIds = new Set<string>();
+  for (const m of lines.text.matchAll(SUPPRESS_FILE_RE)) {
+    m[1]
+      .split(/[\s,]+/)
+      .filter(Boolean)
+      .forEach((id) => fileIds.add(id));
+  }
+  if (fileIds.has('*')) {
+    return [];
+  }
+  findings = findings.filter((f) => !fileIds.has(f.ruleId));
   const suppressed = new Map<number, Set<string>>();
   for (const m of lines.text.matchAll(SUPPRESS_RE)) {
     const line = lines.positionAt(m.index ?? 0).line + (m[1] ? 1 : 0);

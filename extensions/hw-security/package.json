@@ -2,7 +2,7 @@
   "name": "hw-security",
   "displayName": "Embedded Hardware Security Workbench",
   "description": "ESP32 firmware security linter, NIST SP 800-90B entropy & PUF analysis, and ChipWhisperer side-channel tags.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "jest-test-team",
   "license": "MIT",
   "icon": "icon.png",

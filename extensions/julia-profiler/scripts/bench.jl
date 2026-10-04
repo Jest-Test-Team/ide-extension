@@ -35,7 +35,7 @@ const suite = getfield(Main, :SUITE)
 println(stderr, "[bench] tuning")
 tune!(suite)
 println(stderr, "[bench] running")
-results = run(suite; verbose = false, seconds = SECONDS)
+const results = run(suite; verbose = false, seconds = SECONDS)
 
 esc(s) = replace(string(s), "\\" => "\\\\", "\"" => "\\\"", "\n" => "\\n")
 open(OUT, "w") do io
