@@ -73,7 +73,7 @@ const contexts = await Promise.all([
     external: ['vscode'],
     // ESM dependencies (e.g. web-tree-sitter) call createRequire(import.meta.url), which is empty
     // in a CJS bundle; point it at the bundle file instead.
-    define: { 'import.meta.url': '__import_meta_url' },
+    define: { 'import.meta.url': '__import_meta_url', __CLI_VERSION__: JSON.stringify(pkg.version) },
     banner: { js: "const __import_meta_url = require('url').pathToFileURL(__filename).href;" },
   }),
   ...(Object.keys(webEntries).length
