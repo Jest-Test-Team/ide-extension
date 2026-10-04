@@ -20,12 +20,14 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
+    "onCommand:hwSecurity.assessEntropy",
     "onLanguage:c",
     "onLanguage:cpp",
+    "onLanguage:python",
     "onLanguage:yaml",
-    "workspaceContains:**/sdkconfig",
+    "onView:hwSecurity.scaPoints",
     "workspaceContains:**/CMakeLists.txt",
-    "onCommand:hwSecurity.assessEntropy"
+    "workspaceContains:**/sdkconfig"
   ],
   "contributes": {
     "commands": [
@@ -48,6 +50,17 @@
         "command": "hwSecurity.analyzePuf",
         "title": "Analyze PUF Responses\u2026",
         "category": "HW Security"
+      },
+      {
+        "command": "hwSecurity.insertScaTag",
+        "title": "Insert Side-Channel Tag",
+        "category": "HW Security"
+      },
+      {
+        "command": "hwSecurity.refreshSca",
+        "title": "Refresh Side-Channel Points",
+        "category": "HW Security",
+        "icon": "$(refresh)"
       }
     ],
     "configuration": {
@@ -121,8 +134,38 @@
           "when": "resourceExtname == .csv",
           "group": "hwSecurity@3"
         }
+      ],
+      "view/title": [
+        {
+          "command": "hwSecurity.refreshSca",
+          "when": "view == hwSecurity.scaPoints",
+          "group": "navigation"
+        }
       ]
-    }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "hwSecurity",
+          "title": "HW Security",
+          "icon": "media/chip.svg"
+        }
+      ]
+    },
+    "views": {
+      "hwSecurity": [
+        {
+          "id": "hwSecurity.scaPoints",
+          "name": "Side-Channel Points"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "hwSecurity.scaPoints",
+        "contents": "Tag leakage points in firmware with `// @sca(aes-sbox, \"S-box lookup\")` and reference them from ChipWhisperer scripts with `# @sca-ref(aes-sbox)`.\n[Insert Side-Channel Tag](command:hwSecurity.insertScaTag)"
+      }
+    ]
   },
   "scripts": {
     "build": "node ../../scripts/build-extension.mjs",
