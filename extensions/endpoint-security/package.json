@@ -2,7 +2,7 @@
   "name": "endpoint-security",
   "displayName": "Endpoint Security & Compliance Toolkit",
   "description": "WFP / ETW / macOS Endpoint Security API validation, PCI DSS 4.0.1 & CCSP compliance scanning, and process-tree detection simulation.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "publisher": "jest-test-team",
   "license": "MIT",
   "icon": "icon.png",

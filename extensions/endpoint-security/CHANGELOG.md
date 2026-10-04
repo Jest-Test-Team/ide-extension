@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3
+
+- CLI: `jest-endpoint extensions` adds a signal benchmark across all scanned extensions; `jest-security scan` includes the installed-extension risk scan.
+
 ## 0.3.2
 
 - Fix: the installed command (`~/.local/bin/…`) is no longer repointed by development hosts or by the same extension in another editor while the existing target still exists; updates within the same editor are still picked up automatically.

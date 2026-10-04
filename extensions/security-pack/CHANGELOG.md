@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3
+
+- `jest-security scan` is now a full audit: code findings plus the installed-extension risk scan (ranking, reasons with file:line, signal benchmark), printed as a report and written to one SARIF file with two runs.
+
 ## 0.2.2
 
 - Fix: the installed command (`~/.local/bin/…`) is no longer repointed by development hosts or by the same extension in another editor while the existing target still exists; updates within the same editor are still picked up automatically.

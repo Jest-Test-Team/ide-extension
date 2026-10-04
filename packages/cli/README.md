@@ -43,7 +43,7 @@ This section is generated from `--help`.
 ### jest-endpoint
 
 ```text
-jest-endpoint 0.1.1 — Endpoint Security & Compliance Toolkit
+jest-endpoint 0.1.2 — Endpoint Security & Compliance Toolkit
 
 Usage: jest-endpoint <command> [options]
 
@@ -199,7 +199,7 @@ Examples:
 ### jest-hw
 
 ```text
-jest-hw 0.1.1 — Embedded Hardware Security Workbench (alias: jest-embedded)
+jest-hw 0.1.2 — Embedded Hardware Security Workbench (alias: jest-embedded)
 
 Usage: jest-hw <command> [options]
 
@@ -331,7 +331,7 @@ Examples:
 ### jest-julia
 
 ```text
-jest-julia 0.1.1 — Julia Invalidation & Compiler Profiler
+jest-julia 0.1.2 — Julia Invalidation & Compiler Profiler
 
 Usage: jest-julia <command> [options]
 
@@ -454,7 +454,7 @@ Options:
 ### jest-security
 
 ```text
-jest-security 0.1.1 — Security & Systems Engineering Pack — all tools in one command
+jest-security 0.1.2 — Security & Systems Engineering Pack — all tools in one command
 
 Usage: jest-security <command> [options]
 
