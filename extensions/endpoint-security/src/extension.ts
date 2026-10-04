@@ -5,6 +5,7 @@ import { API_LANGUAGES, ApiCompletionProvider, ApiHoverProvider, ApiSignatureHel
 import { join } from 'node:path';
 import { API_RULES } from './apiRules';
 import { COMPLIANCE_CUSTOM_RULES } from './complianceRules';
+import { SCENARIO_SELECTOR, SCENARIO_TEMPLATE, SimulateCodeLens, Simulator } from './ptree/commands';
 import { loadBuiltInPacks, rulesOf } from './rulePacks';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -83,6 +84,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await vscode.workspace.fs.writeFile(dest, new TextEncoder().encode(content));
       void vscode.window.showInformationMessage(`Wrote ${vscode.workspace.asRelativePath(dest)} (${[...findings.values()].flat().length} finding(s)).`);
       return dest;
+    }),
+  );
+
+  // ---- Process-tree simulation (data-only replay through the local / remote agent)
+  const simulator = new Simulator(context);
+  context.subscriptions.push(
+    simulator,
+    vscode.languages.registerCodeLensProvider(SCENARIO_SELECTOR, new SimulateCodeLens()),
+    vscode.commands.registerCommand('endpointSecurity.simulateScenario', (uri?: vscode.Uri) => simulator.simulate(uri)),
+    vscode.commands.registerCommand('endpointSecurity.newScenario', async () => {
+      const doc = await vscode.workspace.openTextDocument({ language: 'yaml', content: SCENARIO_TEMPLATE });
+      await vscode.window.showTextDocument(doc);
+      void vscode.window.showInformationMessage('Save the scenario as <name>.ptree.yaml to enable the ▶ Simulate CodeLens.');
     }),
   );
 }

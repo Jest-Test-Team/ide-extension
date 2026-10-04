@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Process-tree simulation scenario (*.ptree.yaml)",
+  "type": "object",
+  "properties": {
+    "scenario": { "type": "string", "description": "Scenario name." },
+    "description": { "type": "string" },
+    "processes": {
+      "type": "array",
+      "description": "Processes that exist before the first event.",
+      "items": {
+        "type": "object",
+        "required": ["id", "image"],
+        "properties": {
+          "id": { "type": "string" },
+          "image": { "type": "string", "description": "Executable path." },
+          "cmdline": { "type": "string" },
+          "user": { "type": "string" },
+          "integrity": { "type": "string", "enum": ["low", "medium", "high", "system"] },
+          "parent": { "type": "string", "description": "Parent process id." }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "process"],
+        "properties": {
+          "t": { "type": "number", "description": "Milliseconds since scenario start (defaults to previous + 1)." },
+          "type": { "enum": ["spawn", "exec", "terminate", "inject", "file", "registry", "network", "module"] },
+          "process": { "type": "string", "description": "Acting process id (for spawn: the new child)." },
+          "parent": { "type": "string", "description": "spawn: the creating process." },
+          "target": { "type": "string", "description": "terminate / inject: the affected process (omit for self-exit)." },
+          "image": { "type": "string" },
+          "cmdline": { "type": "string" },
+          "user": { "type": "string" },
+          "op": { "type": "string", "description": "file: create | write | rename | delete; registry: set | delete." },
+          "path": { "type": "string" },
+          "key": { "type": "string" },
+          "value": { "type": "string" },
+          "remote": { "type": "string", "description": "network: host:port." },
+          "count": { "type": "integer", "minimum": 1, "description": "Number of identical operations this event stands for." }
+        }
+      }
+    },
+    "rules": { "$ref": "#/definitions/rules" }
+  },
+  "definitions": {
+    "conditions": {
+      "type": "object",
+      "description": "Field → regex (prefix (?i) for case-insensitive), number, or list of alternatives. Fields: type, image, cmdline, user, op, path, key, value, remote, count, process.*, parent.*, target.*, ancestor.* (any ancestor). `$NAME` references a sequence binding.",
+      "additionalProperties": { "anyOf": [{ "type": "string" }, { "type": "number" }, { "type": "boolean" }, { "type": "array" }] }
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "severity": { "enum": ["low", "medium", "high", "critical"] },
+          "description": { "type": "string" },
+          "mitre": { "type": "array", "items": { "type": "string", "pattern": "^T\\d{4}(\\.\\d{3})?$" } },
+          "match": { "$ref": "#/definitions/conditions" },
+          "threshold": {
+            "type": "object",
+            "required": ["match", "count"],
+            "properties": {
+              "match": { "$ref": "#/definitions/conditions" },
+              "count": { "type": "integer" },
+              "within": { "type": "number" },
+              "by": { "enum": ["process", "parent", "none"] }
+            }
+          },
+          "sequence": {
+            "type": "object",
+            "required": ["steps"],
+            "properties": {
+              "within": { "type": "number" },
+              "steps": {
+                "type": "array",
+                "minItems": 2,
+                "items": { "type": "object", "required": ["match"], "properties": { "match": { "$ref": "#/definitions/conditions" }, "bind": { "type": "object", "additionalProperties": { "type": "string" } } } }
+              }
+            }
+          }
+        },
+        "oneOf": [{ "required": ["match"] }, { "required": ["threshold"] }, { "required": ["sequence"] }]
+      }
+    }
+  }
+}

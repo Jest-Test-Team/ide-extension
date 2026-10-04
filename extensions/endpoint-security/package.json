@@ -26,7 +26,8 @@
     "onLanguage:objective-c",
     "onLanguage:go",
     "onLanguage:typescript",
-    "onLanguage:javascript"
+    "onLanguage:javascript",
+    "workspaceContains:**/*.ptree.yaml"
   ],
   "contributes": {
     "commands": [
@@ -38,6 +39,17 @@
       {
         "command": "endpointSecurity.exportReport",
         "title": "Export Compliance Report (SARIF / Markdown)\u2026",
+        "category": "Endpoint Security"
+      },
+      {
+        "command": "endpointSecurity.simulateScenario",
+        "title": "Simulate Process-Tree Scenario",
+        "category": "Endpoint Security",
+        "icon": "$(play)"
+      },
+      {
+        "command": "endpointSecurity.newScenario",
+        "title": "New Process-Tree Scenario",
         "category": "Endpoint Security"
       }
     ],
@@ -74,9 +86,45 @@
           "type": "boolean",
           "default": true,
           "description": "Scan Go / TypeScript / JavaScript for PCI DSS 4.0.1 and CCSP Domain 2 issues."
+        },
+        "endpointSecurity.simulation.useDefaultRules": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include the built-in detection library (MITRE ATT&CK mapped) when simulating."
+        },
+        "endpointSecurity.simulation.ruleFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Workspace-relative YAML files with additional `rules:` for the simulator."
+        },
+        "endpointSecurity.simulation.agentUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Send simulations to a remote agent (JSON-RPC over HTTP), e.g. one started in a sandbox VM with `node ptreeAgent.js --http 8765`. Empty = local agent process."
         }
       }
-    }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "endpointSecurity.simulateScenario",
+          "when": "resourceFilename =~ /\\.ptree\\.ya?ml$/",
+          "group": "navigation"
+        }
+      ]
+    },
+    "yamlValidation": [
+      {
+        "fileMatch": [
+          "*.ptree.yaml",
+          "*.ptree.yml"
+        ],
+        "url": "./dist/ptree/ptree.schema.json"
+      }
+    ]
   },
   "scripts": {
     "build": "node ../../scripts/build-extension.mjs",
@@ -121,7 +169,20 @@
       {
         "from": "data/rules",
         "to": "rules"
+      },
+      {
+        "from": "data/ptree",
+        "to": "ptree"
       }
-    ]
+    ],
+    "nodeEntries": {
+      "ptreeAgent": "src/ptree/agent.ts"
+    },
+    "webEntries": {
+      "ptree": "src/web/ptree.ts"
+    }
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
   }
 }

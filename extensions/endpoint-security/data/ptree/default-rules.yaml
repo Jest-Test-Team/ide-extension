@@ -1,0 +1,113 @@
+# Built-in process-tree detections for the simulator. Field conditions are regular expressions
+# (prefix (?i) for case-insensitive); see the extension README for the field reference.
+rules:
+  - id: office-spawns-script-host
+    title: Office application spawns a shell or script host
+    severity: high
+    mitre: [T1204.002, T1059]
+    match:
+      type: spawn
+      parent.image: '(?i)\\(winword|excel|powerpnt|outlook|onenote)\.exe$'
+      image: '(?i)\\(cmd|powershell|pwsh|wscript|cscript|mshta|rundll32|regsvr32)\.exe$'
+
+  - id: encoded-powershell
+    title: PowerShell with an encoded command
+    severity: medium
+    mitre: [T1059.001, T1027]
+    match:
+      type: [spawn, exec]
+      image: '(?i)\\(powershell|pwsh)\.exe$'
+      cmdline: '(?i)\s-(e|ec|enc|encodedcommand)\s'
+
+  - id: lolbin-download
+    title: Living-off-the-land binary downloads a payload
+    severity: high
+    mitre: [T1105, T1218]
+    match:
+      type: [spawn, exec]
+      cmdline: '(?i)(certutil(\.exe)?\s.*-urlcache|bitsadmin(\.exe)?\s.*/transfer|mshta(\.exe)?\s+https?:|regsvr32(\.exe)?\s.*/i:https?:)'
+
+  - id: inhibit-system-recovery
+    title: Shadow copies / recovery disabled
+    severity: critical
+    mitre: [T1490]
+    match:
+      type: [spawn, exec]
+      cmdline: '(?i)(vssadmin(\.exe)?\s+delete\s+shadows|wmic(\.exe)?\s+shadowcopy\s+delete|wbadmin(\.exe)?\s+delete\s+catalog|bcdedit(\.exe)?\s.*recoveryenabled\s+no)'
+
+  - id: mass-file-encryption
+    title: Mass file modification (ransomware behaviour)
+    severity: critical
+    mitre: [T1486]
+    threshold:
+      match:
+        type: file
+        op: '^(write|rename)$'
+      count: 100
+      within: 10000
+      by: process
+
+  - id: security-tool-termination
+    title: Security product terminated
+    severity: critical
+    mitre: [T1562.001]
+    match:
+      type: terminate
+      target.image: '(?i)(MsMpEng|MsSense|SenseIR|SentinelAgent|CSFalconService|cb|xagt|bdagent|avp|ekrn)\.exe$|/(falcond|com\.crowdstrike|SentinelAgent|osqueryd)$'
+
+  - id: lsass-access
+    title: Injection into / access to LSASS
+    severity: critical
+    mitre: [T1003.001]
+    match:
+      type: inject
+      target.image: '(?i)\\lsass\.exe$'
+
+  - id: process-injection
+    title: Cross-process injection
+    severity: high
+    mitre: [T1055]
+    match:
+      type: inject
+
+  - id: run-key-persistence
+    title: Run key persistence
+    severity: medium
+    mitre: [T1547.001]
+    match:
+      type: registry
+      key: '(?i)\\Software\\Microsoft\\Windows\\CurrentVersion\\Run(Once)?\\?'
+
+  - id: launch-agent-persistence
+    title: macOS LaunchAgent / LaunchDaemon created
+    severity: medium
+    mitre: [T1543.001, T1543.004]
+    match:
+      type: file
+      op: '^(create|write)$'
+      path: '/Library/Launch(Agents|Daemons)/[^/]+\.plist$'
+
+  - id: download-and-execute
+    title: Downloader followed by a shell from the same parent
+    severity: high
+    mitre: [T1105, T1059.004]
+    sequence:
+      within: 5000
+      steps:
+        - match: { type: spawn, image: '/(curl|wget)$' }
+          bind: { P: parent.id }
+        - match: { type: spawn, image: '/(sh|bash|zsh|python3?)$', parent.id: $P }
+
+  - id: orphaning-parent-exit
+    title: Parent exits immediately after spawning a child
+    description: >-
+      Abnormal process-tree termination: the parent exits within a second of creating its child,
+      leaving it re-parented (common with droppers, double-fork daemonisation and PPID-spoofing
+      launchers). Combine with image/path context to reduce noise.
+    severity: low
+    sequence:
+      within: 1000
+      steps:
+        - match: { type: spawn }
+          bind: { P: parent.id }
+        - match: { type: terminate, target.id: $P }

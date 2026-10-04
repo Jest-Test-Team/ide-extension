@@ -1,0 +1,32 @@
+scenario: Macro dropper → ransomware
+description: Word macro launches encoded PowerShell, disables recovery, kills Defender and encrypts files.
+processes:
+  - id: explorer
+    image: C:\Windows\explorer.exe
+    user: alice
+  - id: word
+    image: C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE
+    parent: explorer
+  - id: defender
+    image: C:\ProgramData\Microsoft\Windows Defender\Platform\4.18\MsMpEng.exe
+  - id: lsass
+    image: C:\Windows\System32\lsass.exe
+events:
+  - { t: 0, type: spawn, process: ps, parent: word, image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', cmdline: 'powershell.exe -nop -w hidden -enc SQBFAFgA' }
+  - { t: 400, type: network, process: ps, remote: '203.0.113.7:443' }
+  - { t: 900, type: spawn, process: payload, parent: ps, image: 'C:\Users\alice\AppData\Local\Temp\svc.exe' }
+  - { t: 950, type: terminate, process: ps }
+  - { t: 1200, type: spawn, process: vss, parent: payload, image: 'C:\Windows\System32\vssadmin.exe', cmdline: 'vssadmin.exe Delete Shadows /All /Quiet' }
+  - { t: 1500, type: terminate, process: payload, target: defender }
+  - { t: 1600, type: inject, process: payload, target: lsass }
+  - { t: 1700, type: registry, process: payload, op: set, key: 'HKCU\Software\Microsoft\Windows\CurrentVersion\Run\svc', value: 'C:\Users\alice\AppData\Local\Temp\svc.exe' }
+  - { t: 2000, type: file, process: payload, op: rename, path: 'C:\Users\alice\Documents\*.docx → *.locked', count: 60 }
+  - { t: 4000, type: file, process: payload, op: rename, path: 'C:\Users\alice\Pictures\*.jpg → *.locked', count: 60 }
+rules:
+  - id: temp-binary-execution
+    title: Binary executed from a temp directory
+    severity: medium
+    mitre: [T1204.002]
+    match:
+      type: spawn
+      image: '(?i)\\AppData\\Local\\Temp\\[^\\]+\.exe$'
