@@ -6,4 +6,4 @@ out/
 .ignore/
 coverage/
 .DS_Store
-vsix/
+# vsix/
