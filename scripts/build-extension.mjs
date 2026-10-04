@@ -2,7 +2,6 @@
 // Usage (from an extension folder): node ../../scripts/build-extension.mjs [--watch] [--production]
 import * as esbuild from 'esbuild';
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 
 const cwd = process.cwd();
@@ -10,7 +9,6 @@ const watch = process.argv.includes('--watch');
 const production = process.argv.includes('--production');
 const pkg = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'));
 const cfg = pkg['x-build'] ?? {};
-const require = createRequire(join(cwd, 'package.json'));
 
 /** Node-side bundles: the extension host entry plus any worker / agent entries. */
 const nodeEntries = { extension: 'src/extension.ts', ...(cfg.nodeEntries ?? {}) };
@@ -25,6 +23,22 @@ const common = {
   logLevel: 'info',
 };
 
+/**
+ * Locates an installed package by walking up node_modules folders. Unlike require.resolve this
+ * works for packages whose "exports" map hides package.json.
+ */
+function findPackageDir(name) {
+  for (let dir = cwd; ; dir = dirname(dir)) {
+    const candidate = join(dir, 'node_modules', name);
+    if (existsSync(join(candidate, 'package.json'))) {
+      return candidate;
+    }
+    if (dirname(dir) === dir) {
+      throw new Error(`build: package not installed: ${name}`);
+    }
+  }
+}
+
 /** Copies runtime assets (tree-sitter wasm grammars, static media) into dist/. */
 function copyAssets() {
   mkdirSync(join(cwd, 'dist'), { recursive: true });
@@ -34,7 +48,7 @@ function copyAssets() {
     if (spec.from.startsWith('pkg:')) {
       const [mod, ...rest] = spec.from.slice(4).split('/');
       const scoped = mod.startsWith('@') ? `${mod}/${rest.shift()}` : mod;
-      from = join(dirname(require.resolve(`${scoped}/package.json`)), ...rest);
+      from = join(findPackageDir(scoped), ...rest);
     } else {
       from = resolve(cwd, spec.from);
     }
