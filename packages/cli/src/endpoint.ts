@@ -16,6 +16,7 @@ import { SIGNALS } from '../../../extensions/endpoint-security/src/extscan/signa
 import { serveHttp, serveStdio } from '../../../extensions/endpoint-security/src/ptree/agent';
 import { parseRules, parseScenario, simulate, type SimulationResult } from '../../../extensions/endpoint-security/src/ptree/engine';
 import { loadBuiltInPacks, rulesOf } from '../../../extensions/endpoint-security/src/rulePacks';
+import { editorOf } from './extAnalysis';
 import { runTool, UsageError, VERSION, type Command, type Io, type Tool } from './lib/args';
 import { assetDir } from './lib/assets';
 import { lintCommand, treeSitter } from './lib/lint';
@@ -218,8 +219,6 @@ export async function scanExtensions(dirs: string[], opts: { allowlist: string[]
   return { results, codeRules };
 }
 
-/** `vscode`, `cursor`, … from a path like ~/.cursor/extensions/x. */
-const editorOf = (p: string) => /[\\/]\.([\w-]+)[\\/]extensions[\\/]/.exec(p)?.[1] ?? 'custom';
 
 /**
  * Benchmark across all scanned extensions: how many show each risk signal, heaviest first, plus the
