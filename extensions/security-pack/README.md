@@ -8,6 +8,7 @@ Installs the Endpoint Security & Compliance Toolkit, the Julia Invalidation & Co
 
 ```bash
 jest-security scan                          # full audit: code + installed extensions → report + security.sarif
+jest-security scan-extension                # installed extensions only: discover, scan, analyse → report + security.sarif
 jest-security lint src firmware --format md
 jest-security endpoint simulate attack.ptree.yaml
 jest-security hw entropy trng.bin --bits 8

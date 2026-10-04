@@ -1,6 +1,6 @@
 {
   "name": "@jest-test-team/security-cli",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Command-line tools of the Jest-Test-Team VS Code extensions: jest-endpoint, jest-hw, jest-julia and jest-security.",
   "license": "MIT",
   "repository": {

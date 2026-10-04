@@ -43,7 +43,7 @@ This section is generated from `--help`.
 ### jest-endpoint
 
 ```text
-jest-endpoint 0.1.2 — Endpoint Security & Compliance Toolkit
+jest-endpoint 0.1.4 — Endpoint Security & Compliance Toolkit
 
 Usage: jest-endpoint <command> [options]
 
@@ -174,7 +174,7 @@ Examples:
 <details><summary><code>jest-endpoint extensions</code></summary>
 
 ```text
-Usage: jest-endpoint extensions [extension dirs…] [options]
+Usage: jest-endpoint extensions [extensions folders or single extension folders…] [options]
 
 Risk-scan installed VS Code / Cursor / VSCodium extensions on disk (heuristic, read-only)
 
@@ -186,10 +186,12 @@ Options:
       --node-modules                          Also scan bundled node_modules (--no-node-modules to skip)
       --max-files <number>                    Maximum JavaScript files scanned per extension (default: 2000)
       --fail-on <high|medium|none>            Exit 1 when an extension reaches this level (default: high)
+      --details                               List the reasons for every extension, including low risk (automatic for ≤ 3 extensions)
   -h, --help                                  Show this help
 
 Examples:
   jest-endpoint extensions
+  jest-endpoint extensions ~/.vscode/extensions/ash-blade.postgresql-hacker-helper-1.18.0   # one extension
   jest-endpoint extensions ~/.cursor/extensions --format sarif --out ext.sarif
   jest-endpoint extensions --allowlist ms-python.python --fail-on medium
 ```
@@ -199,7 +201,7 @@ Examples:
 ### jest-hw
 
 ```text
-jest-hw 0.1.2 — Embedded Hardware Security Workbench (alias: jest-embedded)
+jest-hw 0.1.4 — Embedded Hardware Security Workbench (alias: jest-embedded)
 
 Usage: jest-hw <command> [options]
 
@@ -331,7 +333,7 @@ Examples:
 ### jest-julia
 
 ```text
-jest-julia 0.1.2 — Julia Invalidation & Compiler Profiler
+jest-julia 0.1.4 — Julia Invalidation & Compiler Profiler
 
 Usage: jest-julia <command> [options]
 
@@ -454,22 +456,25 @@ Options:
 ### jest-security
 
 ```text
-jest-security 0.1.2 — Security & Systems Engineering Pack — all tools in one command
+jest-security 0.1.4 — Security & Systems Engineering Pack — all tools in one command
 
 Usage: jest-security <command> [options]
 
 Commands:
-  endpoint  Endpoint Security & Compliance Toolkit (same as jest-endpoint …)
-  hw        Embedded Hardware Security Workbench (same as jest-hw …)
-  julia     Julia Invalidation & Compiler Profiler (same as jest-julia …)
-  lint      Run every code linter (endpoint API + compliance, ESP32 / ESPHome, Julia) over the given paths (use scan for a full audit incl. installed extensions)
-  scan      Full security audit: lint the code AND risk-scan installed VS Code / Cursor extensions; prints a report and writes one SARIF file (default security.sarif)
-  doctor    Check the installation: versions, bundled data, and external tools (julia, git)
+  endpoint         Endpoint Security & Compliance Toolkit (same as jest-endpoint …)
+  hw               Embedded Hardware Security Workbench (same as jest-hw …)
+  julia            Julia Invalidation & Compiler Profiler (same as jest-julia …)
+  lint             Run every code linter (endpoint API + compliance, ESP32 / ESPHome, Julia) over the given paths (use scan for a full audit incl. installed extensions)
+  scan             Full security audit: lint the code AND risk-scan installed VS Code / Cursor extensions; prints a report and writes one SARIF file (default security.sarif)
+  scan-extension   Find every installed extension (VS Code, Insiders, VSCodium, Cursor, Windsurf, remote), scan and analyse them; report in the terminal and security.sarif
+  scan-extensions  Alias of scan-extension
+  doctor           Check the installation: versions, bundled data, and external tools (julia, git)
 
 Run "jest-security <command> --help" for command options.
 
 Examples:
   jest-security scan                      # full audit: code + installed extensions → report + security.sarif
+  jest-security scan-extension            # installed extensions only: discover, scan, analyse → report + security.sarif
   jest-security endpoint simulate attack.ptree.yaml
   jest-security hw entropy trng.bin --bits 8
   jest-security julia report profile.json
@@ -527,6 +532,32 @@ Examples:
   jest-security scan src firmware --no-extensions
   jest-security scan --format md --out audit.md
   jest-security scan --extension-dir ~/.cursor/extensions --extension-fail-on medium
+```
+
+</details>
+
+<details><summary><code>jest-security scan-extension</code></summary>
+
+```text
+Usage: jest-security scan-extension [extensions folders or single extension folders…] [options]
+
+Find every installed extension (VS Code, Insiders, VSCodium, Cursor, Windsurf, remote), scan and analyse them; report in the terminal and security.sarif
+
+Options:
+  -f, --format <sarif|md|json|text>           Format of the --out file (the terminal always gets the readable report) (default: sarif)
+  -o, --out <file>                            Report file (--out - prints the file format to stdout instead) (default: security.sarif)
+      --details                               List the reasons for every extension, including low risk
+      --allowlist <publisher.name[@version]>  Trust these extensions (repeatable)
+      --trusted-publisher <publisher>         Treat this publisher as known (repeatable)
+      --node-modules                          Also scan bundled node_modules (--no-node-modules for a faster scan)
+      --max-files <number>                    Maximum JavaScript files scanned per extension (default: 2000)
+      --fail-on <high|medium|none>            Exit 1 when an extension reaches this risk level (default: high)
+  -h, --help                                  Show this help
+
+Examples:
+  jest-security scan-extension                       # every editor → report + security.sarif
+  jest-security scan-extension --details --format md --out extensions.md
+  jest-security scan-extension ~/.vscode/extensions/ash-blade.postgresql-hacker-helper-1.18.0
 ```
 
 </details>

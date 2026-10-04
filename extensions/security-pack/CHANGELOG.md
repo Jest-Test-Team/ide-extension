@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5
+
+- New `jest-security scan-extension`: discovers every installed extensions folder (VS Code, Insiders, VSCodium, Cursor, Windsurf, remote), scans and analyses them (risk ranking, capabilities by category, inventory by editor / install source, outdated copies, recommendations) and writes security.sarif.
+
 ## 0.2.4
 
 - CLI: `jest-endpoint extensions <folder>` accepts a single extension's folder and lists the reasons for every rating (`--details`, automatic for up to 3 extensions).

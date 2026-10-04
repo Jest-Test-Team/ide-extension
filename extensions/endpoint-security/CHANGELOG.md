@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.5
+
+- CLI internals shared with `jest-security scan-extension`.
+
 ## 0.3.4
 
 - CLI: `jest-endpoint extensions <folder>` accepts a single extension's folder and lists the reasons for every rating (`--details`, automatic for up to 3 extensions).

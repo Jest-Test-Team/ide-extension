@@ -20,6 +20,7 @@ describe('jest-security scan-extension', () => {
     expect(text).toMatch(/^HIGH /m);
     expect(text).toMatch(/Data access \(credentials, clipboard, keystrokes\): [1-9]/);
     expect(text).toMatch(/Review .* \(high risk/);
+    expect(text).toContain('Verify ms-pythom.python: its id imitates a popular extension');
     const sarif = JSON.parse(readFileSync(out, 'utf8')) as { runs: { results: { ruleId: string }[] }[] };
     expect(sarif.runs).toHaveLength(1);
     expect(sarif.runs[0].results.filter((r) => r.ruleId === 'ext/risk')).toHaveLength(3);

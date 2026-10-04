@@ -21,10 +21,10 @@ Shared code lives in [`packages/core`](packages/core): a web-tree-sitter host, t
 Build the packages with `npm install && npm run package`, then install them. Install the three extensions first and the pack last: the pack refers to the others by Marketplace ID, so on its own it would try to download them from the Marketplace.
 
 ```bash
-code --install-extension vsix/endpoint-security-0.3.4.vsix
+code --install-extension vsix/endpoint-security-0.3.5.vsix
 code --install-extension vsix/julia-profiler-0.2.3.vsix
 code --install-extension vsix/hw-security-0.2.3.vsix
-code --install-extension vsix/security-pack-0.2.4.vsix   # optional
+code --install-extension vsix/security-pack-0.2.5.vsix   # optional
 ```
 
 You can also use the Extensions view → `…` → **Install from VSIX…**.
@@ -93,7 +93,7 @@ Every extension also works from a terminal or CI pipeline:
 | `jest-endpoint` | Endpoint Security & Compliance Toolkit | `lint`, `compliance`, `simulate`, `api`, `agent`, `extensions` |
 | `jest-hw` (alias `jest-embedded`) | Embedded Hardware Security Workbench | `lint`, `entropy`, `restart`, `puf`, `sca` |
 | `jest-julia` | Julia Invalidation & Compiler Profiler | `lint`, `analyze`, `report`, `bench`, `init` |
-| `jest-security` | Security & Systems Engineering Pack | `lint`, `scan`, `doctor`, plus `endpoint` / `hw` / `julia …` |
+| `jest-security` | Security & Systems Engineering Pack | `lint`, `scan`, `scan-extension`, `doctor`, plus `endpoint` / `hw` / `julia …` |
 
 **Get them** in one of two ways:
 - **From VS Code** (no Node.js needed): **⌘⇧P → Install '<tool>' Command in PATH**, e.g. *Endpoint Security: Install 'jest-endpoint' Command in PATH*.
@@ -114,6 +114,7 @@ jest-hw entropy trng.bin --bits 8 --min 7.5               # NIST SP 800-90B, fai
 jest-julia analyze --max-invalidated 0                    # SnoopCompile, fails on any invalidation
 jest-julia bench --baseline main                          # fails on benchmark regressions
 jest-security scan                                        # full audit: code + installed extensions → report + security.sarif
+jest-security scan-extension                              # installed extensions only: discover, scan, analyse → report + security.sarif
 ```
 
 **Output:**
@@ -260,6 +261,19 @@ Options:
 
 The extension part is heuristic: many legitimate extensions run programs or read credentials for their own features, so it flags risk and its reasons, but it cannot prove an extension safe or malicious.
 
+**Installed extensions only:** `jest-security scan-extension` (alias `scan-extensions`):
+
+1. **Discovers** every extensions folder on the machine: VS Code, Insiders, VSCodium, Cursor, Windsurf and remote servers. It shows how many extensions each one holds; old versions VS Code has marked for removal are skipped.
+2. **Scans** every extension's manifest and code; nothing is executed and nothing is uninstalled.
+3. **Analyses** them:
+   - a risk ranking with the reasons at file:line;
+   - capabilities by category: known-malicious or impersonation, data access, network endpoints, code execution, activation and trust, origin;
+   - an inventory by editor and install source (Marketplace or VSIX), including extensions installed in several editors at different versions;
+   - the signal benchmark, and concrete recommendations (uninstall known-bad, verify typosquats, review high risk, update outdated copies).
+4. **Writes** `security.sarif` with one `ext/risk` result per extension and every signal at its file and line.
+
+To check one extension, pass its folder: `jest-security scan-extension ~/.vscode/extensions/<publisher.name-version>`. Use `--details` for the reasons of every extension, `--format md|json --out <file>` for other report formats, `--no-node-modules` for a faster scan, and `--fail-on medium` to fail on medium risk.
+
 #### Step 4 — Use it on your own project
 
 ```bash
@@ -320,10 +334,10 @@ jobs:
 先執行 `npm install && npm run package` 產生安裝檔，再進行安裝。請先安裝三個擴充套件，最後才裝 Pack：Pack 以 Marketplace ID 引用其他三個套件，若單獨安裝，它會嘗試從 Marketplace 下載。
 
 ```bash
-code --install-extension vsix/endpoint-security-0.3.4.vsix
+code --install-extension vsix/endpoint-security-0.3.5.vsix
 code --install-extension vsix/julia-profiler-0.2.3.vsix
 code --install-extension vsix/hw-security-0.2.3.vsix
-code --install-extension vsix/security-pack-0.2.4.vsix   # 選用
+code --install-extension vsix/security-pack-0.2.5.vsix   # 選用
 ```
 
 也可以在「擴充功能」檢視中點選 `…` → **從 VSIX 安裝…**。
@@ -392,7 +406,7 @@ code --install-extension vsix/security-pack-0.2.4.vsix   # 選用
 | `jest-endpoint` | 端點安全與合規工具組 | `lint`、`compliance`、`simulate`、`api`、`agent`、`extensions` |
 | `jest-hw`（別名 `jest-embedded`） | 嵌入式硬體安全工作台 | `lint`、`entropy`、`restart`、`puf`、`sca` |
 | `jest-julia` | Julia 失效與編譯分析器 | `lint`、`analyze`、`report`、`bench`、`init` |
-| `jest-security` | 安全與系統工程套件包 | `lint`、`scan`、`doctor`，以及 `endpoint` / `hw` / `julia …` |
+| `jest-security` | 安全與系統工程套件包 | `lint`、`scan`、`scan-extension`、`doctor`，以及 `endpoint` / `hw` / `julia …` |
 
 **取得方式**（擇一）：
 - **從 VS Code 安裝**（不需要 Node.js）：**⌘⇧P → Install '<tool>' Command in PATH**，例如 *Endpoint Security: Install 'jest-endpoint' Command in PATH*。
@@ -413,6 +427,7 @@ jest-hw entropy trng.bin --bits 8 --min 7.5               # NIST SP 800-90B，�
 jest-julia analyze --max-invalidated 0                    # SnoopCompile，出現任何失效即失敗
 jest-julia bench --baseline main                          # 效能退步時失敗
 jest-security scan                                        # 完整稽核：程式碼 + 已安裝擴充套件 → 報告 + security.sarif
+jest-security scan-extension                              # 只檢查已安裝擴充套件：找出、掃描、分析 → 報告 + security.sarif
 ```
 
 **輸出：**
@@ -558,6 +573,19 @@ SARIF 檔包含兩個 run：程式碼問題，以及已安裝擴充套件的風�
 - `--format md|json --out audit.md`：改為輸出 Markdown 或 JSON 報告，而非 SARIF。
 
 擴充套件部分屬於啟發式分析：許多正常的擴充套件也會為了自身功能執行程式或讀取憑證，因此它會標示風險與原因，但無法證明某個擴充套件安全或惡意。
+
+**只檢查已安裝擴充套件**：`jest-security scan-extension`（別名 `scan-extensions`）：
+
+1. **找出**本機所有擴充套件資料夾：VS Code、Insiders、VSCodium、Cursor、Windsurf 與遠端伺服器，並顯示各資料夾中的擴充套件數量；已被 VS Code 標記移除的舊版本會略過。
+2. **掃描**每個擴充套件的 manifest 與程式碼；不會執行任何程式，也不會解除安裝任何擴充套件。
+3. **分析**：
+   - 附檔案與行號原因的風險排名；
+   - 依類別整理的能力：已知惡意或冒名、資料存取、網路端點、程式執行、啟動與信任、來源；
+   - 依編輯器與安裝來源（Marketplace 或 VSIX）整理的清單，包括在多個編輯器中版本不同的擴充套件；
+   - 訊號基準統計與具體建議（移除已知惡意、確認冒名、檢查高風險、更新舊版）。
+4. **寫入** `security.sarif`：每個擴充套件一筆 `ext/risk`，加上每個訊號的檔案與行號。
+
+只檢查單一擴充套件時，請傳入其資料夾：`jest-security scan-extension ~/.vscode/extensions/<publisher.name-version>`。`--details` 列出每個擴充套件的原因，`--format md|json --out <檔案>` 輸出其他格式，`--no-node-modules` 可加快掃描，`--fail-on medium` 讓中風險也回傳失敗。
 
 #### 步驟 4 — 用在自己的專案
 
