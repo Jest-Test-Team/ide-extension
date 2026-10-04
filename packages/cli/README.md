@@ -30,7 +30,7 @@ Each VS Code extension also bundles its own command; run **Install '<tool>' Comm
 
 ```yaml
 - run: npm i -g @jest-test-team/security-cli
-- run: jest-security scan . --out security.sarif --fail-on none
+- run: jest-security scan . --no-extensions --out security.sarif --fail-on none   # CI runners have no editor extensions
 - uses: github/codeql-action/upload-sarif@v3
   with:
     sarif_file: security.sarif
@@ -462,17 +462,17 @@ Commands:
   endpoint  Endpoint Security & Compliance Toolkit (same as jest-endpoint …)
   hw        Embedded Hardware Security Workbench (same as jest-hw …)
   julia     Julia Invalidation & Compiler Profiler (same as jest-julia …)
-  lint      Run every linter (endpoint API + compliance, ESP32 / ESPHome, Julia) over the given paths
-  scan      Like lint, but writes a single SARIF file for GitHub code scanning (default security.sarif)
+  lint      Run every code linter (endpoint API + compliance, ESP32 / ESPHome, Julia) over the given paths (use scan for a full audit incl. installed extensions)
+  scan      Full security audit: lint the code AND risk-scan installed VS Code / Cursor extensions; prints a report and writes one SARIF file (default security.sarif)
   doctor    Check the installation: versions, bundled data, and external tools (julia, git)
 
 Run "jest-security <command> --help" for command options.
 
 Examples:
+  jest-security scan                      # full audit: code + installed extensions → report + security.sarif
   jest-security endpoint simulate attack.ptree.yaml
   jest-security hw entropy trng.bin --bits 8
   jest-security julia report profile.json
-  jest-security scan . --out security.sarif
 ```
 
 <details><summary><code>jest-security lint</code></summary>
@@ -480,7 +480,7 @@ Examples:
 ```text
 Usage: jest-security lint [paths…] [options]
 
-Run every linter (endpoint API + compliance, ESP32 / ESPHome, Julia) over the given paths
+Run every code linter (endpoint API + compliance, ESP32 / ESPHome, Julia) over the given paths (use scan for a full audit incl. installed extensions)
 
 Options:
   -f, --format <text|json|sarif|md>             Output format (default: text)
@@ -505,22 +505,28 @@ Examples:
 ```text
 Usage: jest-security scan [paths…] [options]
 
-Like lint, but writes a single SARIF file for GitHub code scanning (default security.sarif)
+Full security audit: lint the code AND risk-scan installed VS Code / Cursor extensions; prints a report and writes one SARIF file (default security.sarif)
 
 Options:
-  -f, --format <text|json|sarif|md>             Output format (default: sarif)
-  -o, --out <file>                              Write the report to a file instead of stdout (default: security.sarif)
+  -f, --format <text|json|sarif|md>             Format of the --out file (the terminal always gets the readable report) (default: sarif)
+  -o, --out <file>                              Report file (use --out - to print the file format to stdout instead) (default: security.sarif)
       --fail-on <error|warning|info|hint|none>  Exit with code 1 when a finding has at least this severity (default: error)
       --disable <rule-id>                       Turn a rule off (repeatable)
       --rule-pack <file.yaml>                   Add a YAML/JSON rule pack (repeatable)
   -q, --quiet                                   Report errors only
       --ignore <glob>                           Skip matching files/folders (gitignore-style; also read from .jestignore) (repeatable)
       --ignore-file                             Read .jestignore in the working directory (--no-ignore-file to skip)
+      --extensions                              Include the installed-extension risk scan (--no-extensions to skip)
+      --extension-dir <dir>                     Extensions folder to scan (default: VS Code, Insiders, VSCodium, Cursor, Windsurf, remote) (repeatable)
+      --allowlist <publisher.name[@version]>    Trusted extensions (repeatable)
+      --extension-fail-on <high|medium|none>    Exit 1 when an installed extension reaches this risk level (default: high)
   -h, --help                                    Show this help
 
 Examples:
-  jest-security scan .
-  jest-security scan services firmware --out reports/all.sarif
+  jest-security scan                          # code in . + installed extensions → report + security.sarif
+  jest-security scan src firmware --no-extensions
+  jest-security scan --format md --out audit.md
+  jest-security scan --extension-dir ~/.cursor/extensions --extension-fail-on medium
 ```
 
 </details>

@@ -12,6 +12,7 @@ import { manifestSignals } from '../../../extensions/endpoint-security/src/extsc
 import { toExtensionMarkdown, toExtensionSarif } from '../../../extensions/endpoint-security/src/extscan/report';
 import type { ExtResult } from '../../../extensions/endpoint-security/src/extscan/scanner';
 import { isAllowlisted, scoreExtension } from '../../../extensions/endpoint-security/src/extscan/score';
+import { SIGNALS } from '../../../extensions/endpoint-security/src/extscan/signals';
 import { serveHttp, serveStdio } from '../../../extensions/endpoint-security/src/ptree/agent';
 import { parseRules, parseScenario, simulate, type SimulationResult } from '../../../extensions/endpoint-security/src/ptree/engine';
 import { loadBuiltInPacks, rulesOf } from '../../../extensions/endpoint-security/src/rulePacks';
@@ -220,7 +221,41 @@ export async function scanExtensions(dirs: string[], opts: { allowlist: string[]
 /** `vscode`, `cursor`, … from a path like ~/.cursor/extensions/x. */
 const editorOf = (p: string) => /[\\/]\.([\w-]+)[\\/]extensions[\\/]/.exec(p)?.[1] ?? 'custom';
 
-function extensionsText(io: Io, results: ExtResult[], dirs: string[]): string {
+/**
+ * Benchmark across all scanned extensions: how many show each risk signal, heaviest first, plus the
+ * risk-level distribution and the median score.
+ */
+export function extensionBenchmark(results: readonly ExtResult[]): string[] {
+  if (!results.length) {
+    return [];
+  }
+  const bySignal = new Map<string, Set<string>>();
+  for (const r of results) {
+    for (const s of r.risk.signals) {
+      bySignal.set(s.id, (bySignal.get(s.id) ?? new Set()).add(r.ext.id));
+    }
+  }
+  const scores = results.map((r) => r.risk.score).sort((a, b) => a - b);
+  const median = scores[Math.floor(scores.length / 2)];
+  const n = results.length;
+  const lines = ['Signal benchmark (how many scanned extensions show each signal):'];
+  const rows = [...bySignal]
+    .map(([id, exts]) => ({ id, count: exts.size, info: SIGNALS[id] }))
+    .sort((a, b) => b.count - a.count || (b.info?.weight ?? 0) - (a.info?.weight ?? 0));
+  const w = Math.max(...rows.map((r) => r.id.length));
+  for (const r of rows) {
+    const bar = '█'.repeat(Math.max(1, Math.round((20 * r.count) / n)));
+    const effect = (r.info?.weight ?? 0) < 0 ? '  (lowers risk)' : (r.info?.weight ?? 0) === 0 ? '  (informational)' : '';
+    lines.push(`  ${r.id.padEnd(w)}  ${String(r.count).padStart(3)}/${n}  ${bar.padEnd(20)}  ${r.info?.title ?? ''}${effect}`);
+  }
+  if (!rows.length) {
+    lines.push('  none');
+  }
+  lines.push(`  Scores: min ${scores[0]}, median ${median}, max ${scores[scores.length - 1]} (medium ≥ 5, high ≥ 9).`);
+  return lines;
+}
+
+export function extensionsText(io: Io, results: ExtResult[], dirs: string[]): string {
   const c = (code: number, s: string) => (io.color ? `\x1b[${code}m${s}\x1b[0m` : s);
   const COLOR = { high: 31, medium: 33, low: 32 } as const;
   const lines = [`Scanned ${results.length} extension(s) in ${dirs.join(', ')}`, ''];
@@ -239,7 +274,7 @@ function extensionsText(io: Io, results: ExtResult[], dirs: string[]): string {
   }
   const n = { high: 0, medium: 0, low: 0 };
   results.forEach((r) => n[r.risk.level]++);
-  lines.push('', `${n.high} high, ${n.medium} medium, ${n.low} low. Heuristic: flags risk signals, it cannot prove an extension safe.`);
+  lines.push('', ...extensionBenchmark(results), '', `${n.high} high, ${n.medium} medium, ${n.low} low. Heuristic: flags risk signals, it cannot prove an extension safe.`);
   return lines.join('\n') + '\n';
 }
 

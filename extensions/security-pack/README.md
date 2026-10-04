@@ -7,7 +7,7 @@ Installs the Endpoint Security & Compliance Toolkit, the Julia Invalidation & Co
 **Security Pack: Install 'jest-security' Command in PATH** adds one command for all three tools:
 
 ```bash
-jest-security scan . -o security.sarif      # every rule set → one SARIF file
+jest-security scan                          # full audit: code + installed extensions → report + security.sarif
 jest-security lint src firmware --format md
 jest-security endpoint simulate attack.ptree.yaml
 jest-security hw entropy trng.bin --bits 8

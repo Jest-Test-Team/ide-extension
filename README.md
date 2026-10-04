@@ -21,10 +21,10 @@ Shared code lives in [`packages/core`](packages/core): a web-tree-sitter host, t
 Build the packages with `npm install && npm run package`, then install them. Install the three extensions first and the pack last: the pack refers to the others by Marketplace ID, so on its own it would try to download them from the Marketplace.
 
 ```bash
-code --install-extension vsix/endpoint-security-0.3.2.vsix
-code --install-extension vsix/julia-profiler-0.2.2.vsix
-code --install-extension vsix/hw-security-0.2.2.vsix
-code --install-extension vsix/security-pack-0.2.2.vsix   # optional
+code --install-extension vsix/endpoint-security-0.3.3.vsix
+code --install-extension vsix/julia-profiler-0.2.3.vsix
+code --install-extension vsix/hw-security-0.2.3.vsix
+code --install-extension vsix/security-pack-0.2.3.vsix   # optional
 ```
 
 You can also use the Extensions view → `…` → **Install from VSIX…**.
@@ -112,7 +112,7 @@ jest-hw lint firmware/ sdkconfig
 jest-hw entropy trng.bin --bits 8 --min 7.5               # NIST SP 800-90B, fails below 7.5 bits/sample
 jest-julia analyze --max-invalidated 0                    # SnoopCompile, fails on any invalidation
 jest-julia bench --baseline main                          # fails on benchmark regressions
-jest-security scan . -o security.sarif                    # every rule set, one SARIF file
+jest-security scan                                        # full audit: code + installed extensions → report + security.sarif
 ```
 
 **Output:**
@@ -235,9 +235,29 @@ cd -
 
 ```bash
 jest-security lint extensions --format md --out findings.md      # all rule sets, Markdown report
-jest-security scan extensions --out security.sarif               # all rule sets, one SARIF file
+jest-security scan                                               # full audit (see below)
 jest-security hw entropy extensions/hw-security/test/fixtures/entropy/rand8_short.bin --bits 8   # any sub-tool
 ```
+
+`jest-security scan` is the full security audit. It prints a readable report in the terminal and writes the same results to `security.sarif`:
+
+1. **Code**: every linter (endpoint API, PCI DSS / CCSP, ESP32 / ESPHome, Julia) over the paths you give (default `.`, honouring `.jestignore`).
+2. **Installed extensions**: a risk scan of every extension in VS Code, Insiders, VSCodium, Cursor and Windsurf:
+   - a ranking with a **low / medium / high** risk level and score for each;
+   - the reasons for each medium or high rating, with file and line (e.g. reads credential stores, runs programs, obfuscated or dynamic code, network endpoints, known-malicious entries);
+   - a **signal benchmark**: how many of your extensions show each signal, plus the score distribution.
+3. **Summary**: totals for both parts.
+
+The SARIF file contains two runs: the code findings, and the installed-extension risk, with one `ext/risk` result per extension plus each signal at file:line. It works with VS Code's SARIF Viewer or GitHub code scanning.
+
+Options:
+- `--no-extensions`: code only.
+- `--extension-dir <dir>`: scan a specific extensions folder.
+- `--allowlist publisher.name`: trust an extension.
+- `--extension-fail-on medium`: exit 1 at medium risk instead of high.
+- `--format md|json --out audit.md`: write a Markdown or JSON report instead of SARIF.
+
+The extension part is heuristic: many legitimate extensions run programs or read credentials for their own features, so it flags risk and its reasons, but it cannot prove an extension safe or malicious.
 
 #### Step 4 — Use it on your own project
 
@@ -267,7 +287,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install -g @jest-test-team/security-cli
-      - run: jest-security scan . --out security.sarif --fail-on none
+      - run: jest-security scan . --no-extensions --out security.sarif --fail-on none   # CI runners have no editor extensions
       - uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: security.sarif
@@ -299,10 +319,10 @@ jobs:
 先執行 `npm install && npm run package` 產生安裝檔，再進行安裝。請先安裝三個擴充套件，最後才裝 Pack：Pack 以 Marketplace ID 引用其他三個套件，若單獨安裝，它會嘗試從 Marketplace 下載。
 
 ```bash
-code --install-extension vsix/endpoint-security-0.3.2.vsix
-code --install-extension vsix/julia-profiler-0.2.2.vsix
-code --install-extension vsix/hw-security-0.2.2.vsix
-code --install-extension vsix/security-pack-0.2.2.vsix   # 選用
+code --install-extension vsix/endpoint-security-0.3.3.vsix
+code --install-extension vsix/julia-profiler-0.2.3.vsix
+code --install-extension vsix/hw-security-0.2.3.vsix
+code --install-extension vsix/security-pack-0.2.3.vsix   # 選用
 ```
 
 也可以在「擴充功能」檢視中點選 `…` → **從 VSIX 安裝…**。
@@ -390,7 +410,7 @@ jest-hw lint firmware/ sdkconfig
 jest-hw entropy trng.bin --bits 8 --min 7.5               # NIST SP 800-90B，低於 7.5 位元/樣本即失敗
 jest-julia analyze --max-invalidated 0                    # SnoopCompile，出現任何失效即失敗
 jest-julia bench --baseline main                          # 效能退步時失敗
-jest-security scan . -o security.sarif                    # 所有規則，輸出單一 SARIF 檔
+jest-security scan                                        # 完整稽核：程式碼 + 已安裝擴充套件 → 報告 + security.sarif
 ```
 
 **輸出：**
@@ -513,9 +533,29 @@ cd -
 
 ```bash
 jest-security lint extensions --format md --out findings.md      # 所有規則，輸出 Markdown 報告
-jest-security scan extensions --out security.sarif               # 所有規則，輸出單一 SARIF 檔
+jest-security scan                                               # 完整稽核（見下方說明）
 jest-security hw entropy extensions/hw-security/test/fixtures/entropy/rand8_short.bin --bits 8   # 也可呼叫任一子工具
 ```
+
+`jest-security scan` 是完整的安全稽核。它會在終端機顯示易讀的報告，並把相同結果寫入 `security.sarif`：
+
+1. **程式碼**：對指定路徑（預設為 `.`，並遵循 `.jestignore`）執行所有檢查（端點 API、PCI DSS / CCSP、ESP32 / ESPHome、Julia）。
+2. **已安裝擴充套件**：掃描 VS Code、Insiders、VSCodium、Cursor 與 Windsurf 中每個擴充套件的風險：
+   - 每個擴充套件的**低 / 中 / 高**風險等級與分數排名；
+   - 中、高風險的原因，附檔案與行號（例如讀取憑證儲存區、執行外部程式、混淆或動態程式碼、網路端點、已知惡意清單）；
+   - **訊號基準統計**：你的擴充套件中有多少個出現各項訊號，以及分數分布。
+3. **摘要**：兩部分的總計。
+
+SARIF 檔包含兩個 run：程式碼問題，以及已安裝擴充套件的風險（每個擴充套件一筆 `ext/risk`，加上每個訊號的檔案與行號）。可用 VS Code 的 SARIF Viewer 或 GitHub code scanning 開啟。
+
+選項：
+- `--no-extensions`：只掃描程式碼。
+- `--extension-dir <資料夾>`：掃描指定的擴充套件資料夾。
+- `--allowlist publisher.name`：信任某個擴充套件。
+- `--extension-fail-on medium`：中風險即回傳結束碼 1（預設為高風險）。
+- `--format md|json --out audit.md`：改為輸出 Markdown 或 JSON 報告，而非 SARIF。
+
+擴充套件部分屬於啟發式分析：許多正常的擴充套件也會為了自身功能執行程式或讀取憑證，因此它會標示風險與原因，但無法證明某個擴充套件安全或惡意。
 
 #### 步驟 4 — 用在自己的專案
 
@@ -545,7 +585,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install -g @jest-test-team/security-cli
-      - run: jest-security scan . --out security.sarif --fail-on none
+      - run: jest-security scan . --no-extensions --out security.sarif --fail-on none   # CI 執行環境沒有安裝編輯器擴充套件
       - uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: security.sarif
