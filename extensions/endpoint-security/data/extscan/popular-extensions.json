@@ -14,7 +14,7 @@
     "nrwl", "firefox-devtools", "msjsdiag", "orta", "firsttris", "vitest", "anthropic", "continue", "codeium", "tabnine", "supermaven",
     "foxundermoon", "timonwong", "jock", "lextudio", "mathiasfrohlich", "hbenl", "kisstkondoros", "ziglang", "scala-lang", "scalameta",
     "dart-code", "fwcd", "mathworks", "reditorsupport", "quarto", "posit", "ionic", "expo", "msjsdiag", "bierner", "johnpapa", "sdras",
-    "teabyii", "oracle", "salesforce", "ibm", "vmware", "pivotal", "intellsmi", "ms-vscode-node-debug2"
+    "teabyii", "oracle", "salesforce", "ibm", "vmware", "pivotal", "intellsmi", "ms-vscode-node-debug2", "anysphere", "wakatime"
   ],
   "popular": [
     "ms-python.python", "ms-python.vscode-pylance", "ms-python.debugpy", "ms-python.black-formatter", "ms-python.pylint", "ms-python.flake8",

@@ -60,7 +60,7 @@ describe.runIf(posix)('deep scan with analyzers', () => {
   it('runs TypeScript only without --deep', async () => {
     const io = captureIo(REPO);
     await main(['scan-extension', DEEP, '--format', 'text', '--fail-on', 'none'], io);
-    expect(io.stdout()).toMatch(/Coverage: 18\/147 vectors ran \(TypeScript core\)/);
+    expect(io.stdout()).toMatch(/Coverage: 37\/147 vectors ran \(TypeScript core\)/);
     expect(io.stdout()).toContain('Run with --deep');
   });
 

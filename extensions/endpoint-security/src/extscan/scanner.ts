@@ -7,6 +7,7 @@ import { loadCodeRules, type CodeScanOptions, type CodeScanResult } from './code
 import { loadManifestOptions } from './data';
 import { inventory } from './inventory';
 import { manifestSignals, type ExtInfo } from './manifest';
+import { combinedSignals, deepManifestSignals } from './manifestDeep';
 import { isAllowlisted, scoreExtension, type RiskScore } from './score';
 import type { Signal } from './signals';
 import type { ScanWorkerRequest, ScanWorkerResponse } from './worker';
@@ -129,7 +130,8 @@ export class ExtensionScanner implements vscode.Disposable {
         await this.writeCache({ version: 1, entries: Object.fromEntries(Object.entries(cache.entries).filter(([k]) => live.has(k))) });
 
         return all.map((e): ExtResult => {
-          const signals = [...manifestSignals(e, manifestOpts), ...(cache.entries[keyOf(e)]?.signals ?? []), ...(extra?.get(e.id.toLowerCase()) ?? [])];
+          const base = [...manifestSignals(e, manifestOpts), ...deepManifestSignals(e, manifestOpts), ...(cache.entries[keyOf(e)]?.signals ?? []), ...(extra?.get(e.id.toLowerCase()) ?? [])];
+          const signals = [...base, ...combinedSignals(e, base)];
           const ext = { id: e.id, version: e.version, displayName: e.displayName, path: e.path, builtin: e.builtin, source: e.source };
           return { ext, risk: scoreExtension(signals, { allowlisted: isAllowlisted(e.id, e.version, allowlist) }) };
         });

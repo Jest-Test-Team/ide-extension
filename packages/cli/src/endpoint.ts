@@ -9,6 +9,7 @@ import { loadCodeRules, scanExtensionCode } from '../../../extensions/endpoint-s
 import { loadManifestOptions } from '../../../extensions/endpoint-security/src/extscan/data';
 import { readExtensionsDir } from '../../../extensions/endpoint-security/src/extscan/disk';
 import { manifestSignals } from '../../../extensions/endpoint-security/src/extscan/manifest';
+import { combinedSignals, deepManifestSignals } from '../../../extensions/endpoint-security/src/extscan/manifestDeep';
 import { toExtensionMarkdown, toExtensionSarif } from '../../../extensions/endpoint-security/src/extscan/report';
 import type { ExtResult } from '../../../extensions/endpoint-security/src/extscan/scanner';
 import { isAllowlisted, scoreExtension } from '../../../extensions/endpoint-security/src/extscan/score';
@@ -276,7 +277,8 @@ export async function scanExtensions(dirs: string[], opts: ScanOptions): Promise
       exts.push(e);
       opts.onProgress?.(e.id);
       const code = await scanExtensionCode(engine, host, e.path, e.packageJSON, { includeNodeModules: opts.includeNodeModules, maxFileSizeMB: 10, maxFiles: opts.maxFiles });
-      signals.set(e.path, [...manifestSignals(e, manifestOpts), ...code.signals]);
+      const base = [...manifestSignals(e, manifestOpts), ...deepManifestSignals(e, manifestOpts), ...code.signals];
+      signals.set(e.path, [...base, ...combinedSignals(e, base)]);
     }
   }
 
