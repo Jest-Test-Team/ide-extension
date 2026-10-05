@@ -40,3 +40,38 @@ jobs:
         with:
           name: vsix
           path: vsix/*.vsix
+
+  go-analyzer:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: analyzers/go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: analyzers/go/go.mod
+          cache-dependency-path: analyzers/go/go.mod
+      - name: gofmt
+        if: runner.os != 'Windows'
+        run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test ./...
+      - uses: actions/setup-node@v4
+        if: runner.os == 'Linux'
+        with:
+          node-version: 22
+          cache: npm
+      - name: CLI drives the Go analyzer
+        if: runner.os == 'Linux'
+        working-directory: .
+        run: |
+          npm ci
+          npm run build -w @jest-test-team/security-cli
+          node packages/cli/dist/jest-security.js analyzers install go --source analyzers/go
+          node packages/cli/dist/jest-security.js scan-extension extensions/endpoint-security/test/fixtures/extensions --analyzers go --fail-on none --out - --format json > deep.json
+          node -e "const d=require('./deep.json'); const go=d.coverage.analyzers.find(a=>a.engine==='go'); if(!go||go.ran<8||go.errors.length) throw new Error(JSON.stringify(d.coverage.analyzers)); console.log('go analyzer ran', go.ran, 'vectors')"

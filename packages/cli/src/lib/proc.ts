@@ -5,9 +5,13 @@ import { delimiter, join } from 'node:path';
 import type { Io } from './args';
 
 /** Runs a program without a shell, streaming its output to stderr; resolves with exit code and stdout. */
-export function run(cmd: string, args: string[], opts: { cwd: string; io: Io; quiet?: boolean; timeoutMs?: number }): Promise<{ code: number | null; stdout: string }> {
+export function run(
+  cmd: string,
+  args: string[],
+  opts: { cwd: string; io: Io; quiet?: boolean; timeoutMs?: number; env?: Record<string, string> },
+): Promise<{ code: number | null; stdout: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { cwd: opts.cwd, shell: false });
+    const child = spawn(cmd, args, { cwd: opts.cwd, shell: false, env: opts.env ? { ...process.env, ...opts.env } : process.env });
     let stdout = '';
     child.stdout.on('data', (b: Buffer) => {
       stdout += b.toString();

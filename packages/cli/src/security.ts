@@ -7,8 +7,8 @@ import { analyzerSearchPath, discoverAnalyzers } from './analyzers/host';
 import { ENGINE_BINARIES, ENGINE_NAMES, type EngineId } from './analyzers/protocol';
 import { SIGNALS } from '../../../extensions/endpoint-security/src/extscan/signals';
 import { analysisText, analyzeExtensions } from './extAnalysis';
-import { existsSync } from 'node:fs';
-import { delimiter } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { delimiter, join } from 'node:path';
 import { HW_TOOL, hwRules } from './hw';
 import { JULIA_TOOL } from './julia';
 import { processIo, runTool, UsageError, VERSION, type Command, type Io, type Tool } from './lib/args';
@@ -16,7 +16,7 @@ import { assetDir, type AssetKind } from './lib/assets';
 import { effectiveRules, lintCommand, lintFiles, patternsFrom } from './lib/lint';
 import { emit, exitFor, failThreshold, formatOf, LINT_FLAGS, renderFindings, textReport } from './lib/output';
 import { resolve } from 'node:path';
-import { run, which } from './lib/proc';
+import { cacheDir, run, which } from './lib/proc';
 
 /** Every rule of the three extensions, de-duplicated by id. */
 export function allRules(): Rule[] {
@@ -258,10 +258,51 @@ async function analyzerStatus(): Promise<string[]> {
   return lines;
 }
 
+/** Go module of the Go analyzer; `go install` fetches it from the public repository. */
+export const GO_ANALYZER_MODULE = 'github.com/Jest-Test-Team/ide-extension/analyzers/go/cmd/jest-ext-go';
+
+async function installAnalyzer(engine: string, source: string | undefined, io: Io): Promise<number> {
+  if (engine !== 'go') {
+    throw new UsageError(`installing the ${engine} analyzer is not supported yet; available: go`);
+  }
+  const go = which('go');
+  if (!go) {
+    io.err('The Go analyzer is built from source and needs Go 1.22+: https://go.dev/dl/\n');
+    return 1;
+  }
+  const dest = join(cacheDir('jest-security'), 'analyzers');
+  mkdirSync(dest, { recursive: true });
+  const exe = process.platform === 'win32' ? '.exe' : '';
+  const res = source
+    ? await run(go, ['build', '-trimpath', '-o', join(dest, `jest-ext-go${exe}`), './cmd/jest-ext-go'], { cwd: resolve(source), io })
+    : await run(go, ['install', '-trimpath', `${GO_ANALYZER_MODULE}@latest`], { cwd: dest, io, env: { GOBIN: dest } });
+  if (res.code !== 0) {
+    io.err(`go ${source ? 'build' : 'install'} failed (exit ${res.code})\n`);
+    return 1;
+  }
+  io.out(`Installed jest-ext-go into ${dest}\n${(await analyzerStatus()).join('\n')}\n`);
+  return 0;
+}
+
 const analyzersCmd: Command = {
   name: 'analyzers',
-  summary: 'Show the optional deep-inspection analyzers (Rust, Go, Python, Julia): installed, version, vectors',
-  async run(_args, io) {
+  summary: 'Show the optional deep-inspection analyzers (Rust, Go, Python, Julia), or install one: analyzers install go',
+  args: '[install <go>]',
+  flags: {
+    source: { type: 'string', value: '<dir>', description: 'With install: build from this checkout of analyzers/go instead of fetching it' },
+  },
+  examples: ['jest-security analyzers', 'jest-security analyzers install go', 'jest-security analyzers install go --source ./analyzers/go'],
+  async run(args, io) {
+    const [sub, engine] = args.positionals;
+    if (sub === 'install') {
+      if (!engine) {
+        throw new UsageError('which analyzer? e.g. jest-security analyzers install go');
+      }
+      return installAnalyzer(engine, args.flags.source as string | undefined, io);
+    }
+    if (sub) {
+      throw new UsageError(`unknown subcommand: ${sub}`);
+    }
     const tsCount = Object.values(SIGNALS).filter((s) => (s.engines as string[]).includes('ts')).length;
     io.out(
       [

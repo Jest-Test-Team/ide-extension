@@ -1,3 +1,5 @@
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parseMessage } from '../src/analyzers/protocol';
@@ -19,12 +21,17 @@ describe('analyzer protocol', () => {
 
 describe.runIf(posix)('deep scan with analyzers', () => {
   let saved: string | undefined;
+  let savedCache: string | undefined;
   beforeEach(() => {
     saved = process.env.JEST_ANALYZERS_DIR;
+    savedCache = process.env.XDG_CACHE_HOME;
     process.env.JEST_ANALYZERS_DIR = MOCKS;
+    // Analyzers the developer installed into the real cache must not leak into these tests.
+    process.env.XDG_CACHE_HOME = mkdtempSync(join(tmpdir(), 'jest-cache-'));
   });
   afterEach(() => {
     process.env.JEST_ANALYZERS_DIR = saved;
+    process.env.XDG_CACHE_HOME = savedCache;
   });
 
   it('merges valid analyzer signals, rejects foreign vectors and reports coverage', async () => {
