@@ -54,7 +54,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: analyzers/go/go.mod
+          # go.mod states the minimum (1.22); its test binaries abort on current macOS runners
+          # (missing LC_UUID), fixed in later Go releases.
+          go-version: stable
           cache-dependency-path: analyzers/go/go.mod
       - name: gofmt
         if: runner.os != 'Windows'
