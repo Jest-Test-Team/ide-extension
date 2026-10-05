@@ -23,7 +23,7 @@ suite('installed extension scan', () => {
     // (test/fixtures/extensions), so the code signals prove the worker and rules ran end to end.
     const self = summaries.find((s) => s.id === 'jest-test-team.endpoint-security');
     assert.ok(self, `not scanned; got ${summaries.map((s) => s.id).join(', ')}`);
-    for (const id of ['ext/credential-path', 'ext/exfil-endpoint', 'ext/obfuscated', 'ext/native-binary', 'ext/unknown-publisher']) {
+    for (const id of ['ext/ssh-keys', 'ext/exfil-endpoint', 'ext/obfuscated', 'ext/native-binary', 'ext/unknown-publisher']) {
       assert.ok(self.signals.includes(id), `${id} missing: ${self.signals.join(', ')}`);
     }
     assert.ok(!summaries.some((s) => s.id.startsWith('vscode.')), 'built-in extensions should be skipped');
