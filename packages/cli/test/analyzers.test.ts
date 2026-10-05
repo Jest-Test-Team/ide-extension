@@ -35,7 +35,7 @@ describe.runIf(posix)('deep scan with analyzers', () => {
       results: { ext: { id: string }; risk: { signals: { id: string; locations: { file: string; finding: { range: { start: { line: number } } } }[] }[] } }[];
     };
     const sig = json.results[0].risk.signals.find((s) => s.id === 'ext/shell-exec');
-    expect(sig?.locations[0].file).toMatch(/out[\\/]extension\.js$/);
+    expect(sig?.locations[0].file).toMatch(/lib[\\/]extension\.js$/);
     expect(sig?.locations[0].finding.range.start.line).toBe(2);
     expect(json.results[0].risk.signals.some((s) => s.id === 'ext/python-exec')).toBe(false);
     expect(json.coverage.ran['ext/shell-exec']).toEqual(['rs']);

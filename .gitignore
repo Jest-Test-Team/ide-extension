@@ -9,3 +9,6 @@ coverage/
 # vsix/
 *.txt
 security.sarif
+
+# Sample extensions used by tests keep their compiled code in out/.
+!**/test/fixtures/**/out/

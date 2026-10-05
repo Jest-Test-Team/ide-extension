@@ -1,0 +1,8 @@
+// Scanner test fixture: javascript-obfuscator-shaped code around random bytes. Never executed.
+function _0x5f3a(){const _0x1a2b3c=0,_0x4d5e6f=1,_0xa1b2c3=2,_0xdead01=3,_0xbeef02=4,_0x0c0ffe=5;return [_0x1a2b3c,_0x4d5e6f,_0xa1b2c3,_0xdead01,_0xbeef02,_0x0c0ffe];}
+function f0(_0x1a2b3c){return _0x1a2b3c+_0x4d5e6f+_0xa1b2c3+_0xdead01+_0xbeef02+_0x0c0ffe+_0x1a2b3c;}
+function f1(_0x4d5e6f){return _0x1a2b3c+_0x4d5e6f+_0xa1b2c3+_0xdead01+_0xbeef02+_0x0c0ffe+_0x4d5e6f;}
+function f2(_0xa1b2c3){return _0x1a2b3c+_0x4d5e6f+_0xa1b2c3+_0xdead01+_0xbeef02+_0x0c0ffe+_0xa1b2c3;}
+function f3(_0xdead01){return _0x1a2b3c+_0x4d5e6f+_0xa1b2c3+_0xdead01+_0xbeef02+_0x0c0ffe+_0xdead01;}
+function decodeNeverCalled(){const _0x77aa11='8W0F7GspJI0sYa2x6SY/eOT3us4blVAUotF4cs/kBk3SLoZaTJQAZTDu1uK6kf3EulkE2K+ezRa4meCqEelZtIMwUJBj3a4GuofpvupqERSyFWkaKJXZ4El/kwWCSpAgexED5SN9qQiKHFJsOBDdyVQmvoiFepCy89XWZtQLcq2wwa/y5D6A6RVDzxPzcz/DFqwQhjW+O33GCjgnQHqCnOFFX1WKfK6Yyh5jUTa0RJnqz+7m5Z6oCuSiordOnmxN25r1ndcy7RG/03HH8BLf0XqowjyXsiU0zH1RCJg4cQuvqyxwqaHQ+oIxNiONcFTLl2uDo+z1Avffq9VHJPXrHUdShEjVEmv14OqNYKXX1gS1/iYVWW/1EG6E2sz4wltTGRmAf5BzshLqtTEIUmtWVwe0LW0YK34l4wdfffaY+hl15SY/H11DFuWAzxawHKYuEeA6Q6nxQCxLSx1J+7GfufxMPUok50/rWE9+I82JxKRzQOGephLAZMRgpdq6Nzopty1m2R2/afhaENP9+JHG1WJ6WCjo4Gt+WAF3bQR2ZISbcI2fiaj0Jv0UJ+DQYslGA38jDein9yBEixiXVuk6uyrScGyXfLE/6cF9ud3p5i7NySh6wn3S0F9MmSSo8OL7ryvpKmyshPiS65T+xLksL6tmHpiOHUPzlQV3IOx/sHz55jCgSXljTGdToPZfgcoA836yjulruH1P4lxZEDwkFXxyu5rdFkqKdY2vrLOo5oFZ6MREJu4ImKpdY2yJUFAVeuPnp0f3cPa7oA2EmPQN91Tfv23qLtTKIQQPoRU0Ax8=';return Function(Buffer.from(_0x77aa11,'base64').toString());}
+module.exports={};
