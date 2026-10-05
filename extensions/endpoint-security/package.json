@@ -53,7 +53,7 @@
       },
       {
         "command": "endpointSecurity.exportReport",
-        "title": "Export Compliance Report (SARIF / Markdown)\u2026",
+        "title": "Export Compliance Report (SARIF / Markdown)…",
         "category": "Endpoint Security"
       },
       {
@@ -75,13 +75,13 @@
       },
       {
         "command": "endpointSecurity.exportExtensionReport",
-        "title": "Export Extension Risk Report (SARIF / Markdown)\u2026",
+        "title": "Export Extension Risk Report (SARIF / Markdown)…",
         "category": "Endpoint Security",
         "icon": "$(save)"
       },
       {
         "command": "endpointSecurity.extensionScan.allowlist",
-        "title": "Trust (Allowlist)\u2026",
+        "title": "Trust (Allowlist)…",
         "category": "Endpoint Security",
         "icon": "$(verified)"
       },
@@ -335,7 +335,8 @@
     "watch": "node ../../scripts/build-extension.mjs --watch",
     "vscode:prepublish": "node ../../scripts/build-extension.mjs --production",
     "test:integration": "npm run build && tsc -p tsconfig.test.json && vscode-test",
-    "package": "node -e \"require('fs').mkdirSync('../../vsix',{recursive:true})\" && vsce package --no-dependencies --out ../../vsix/"
+    "package": "node -e \"require('fs').mkdirSync('../../vsix',{recursive:true})\" && vsce package --no-dependencies --out ../../vsix/",
+    "gen:vectors": "node scripts/gen-vectors.mjs"
   },
   "devDependencies": {
     "@ide-ext/core": "*"
