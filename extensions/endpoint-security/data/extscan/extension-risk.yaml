@@ -83,32 +83,29 @@ rules:
 
   - id: ext/exfil-endpoint.service
     kind: pattern
-    title: Exfiltration / tunnelling / IP-lookup service
+    title: Exfiltration / tunnelling service
     severity: warning
     languages: [javascript]
-    message: "References `{{match}}`, a service commonly used to send data out or locate the host."
+    message: "References `{{match}}`, a service commonly used to send data out of the machine."
     refs:
       - label: "MITRE ATT&CK T1567 — Exfiltration Over Web Service"
         url: https://attack.mitre.org/techniques/T1567/
-      - label: "MITRE ATT&CK T1016 — System Network Configuration Discovery"
-        url: https://attack.mitre.org/techniques/T1016/
     flags: i
     # Path-specific endpoints match anywhere; bare service hosts need `//` in front (a URL), so
     # domain lists such as dynamic-DNS / public-suffix tables do not trigger.
-    pattern: "\\b(?:discord(?:app)?\\.com/api/webhooks/|api\\.telegram\\.org/bot|pastebin\\.com/(?:raw|api)/)|//(?:[\\w-]+\\.)*(?:hastebin\\.com|paste\\.ee|ghostbin\\.\\w+|transfer\\.sh|webhook\\.site|interact\\.sh|burpcollaborator\\.net|api\\.ipify\\.org|ipinfo\\.io|ip-api\\.com|icanhazip\\.com|ifconfig\\.me|gist\\.githubusercontent\\.com)\\b|//[\\w-]+\\.(?:ngrok(?:-free)?\\.(?:io|app|dev)|trycloudflare\\.com|pipedream\\.net|requestcatcher\\.com|oast\\.(?:pro|live|fun|me|site|online))\\b"
+    pattern: "\\b(?:discord(?:app)?\\.com/api/webhooks/|api\\.telegram\\.org/bot|pastebin\\.com/(?:raw|api)/)|//(?:[\\w-]+\\.)*(?:hastebin\\.com|paste\\.ee|ghostbin\\.\\w+|transfer\\.sh|webhook\\.site|interact\\.sh|burpcollaborator\\.net|gist\\.githubusercontent\\.com)\\b|//[\\w-]+\\.(?:ngrok(?:-free)?\\.(?:io|app|dev)|trycloudflare\\.com|pipedream\\.net|requestcatcher\\.com|oast\\.(?:pro|live|fun|me|site|online))\\b"
 
   - id: ext/credential-path.files
     kind: pattern
-    title: Credential store path
+    title: Editor or app credential store
     severity: warning
     languages: [javascript]
     message: "References the credential store `{{match}}`."
     refs:
       - label: "MITRE ATT&CK T1552.001 — Credentials In Files"
         url: https://attack.mitre.org/techniques/T1552/001/
-      - label: "MITRE ATT&CK T1555.003 — Credentials from Web Browsers"
-        url: https://attack.mitre.org/techniques/T1555/003/
-    pattern: "\\.ssh['\"]?\\s*[,+]?\\s*['\"]?[/\\\\]{0,2}(?:id_(?:rsa|ed25519|ecdsa|dsa)|authorized_keys)\\b|\\.ssh[/\\\\]{1,2}(?:id_\\w+|authorized_keys)\\b|\\.aws[/\\\\]{1,2}credentials\\b|['\"/\\\\]\\.git-credentials\\b|['\"/\\\\]\\.(?:npmrc|pypirc|netrc)['\"]|\\.docker[/\\\\]{1,2}config\\.json|\\.kube[/\\\\]{1,2}config\\b|\\.config[/\\\\]{1,2}gcloud\\b|['\"/\\\\](?:Login Data|Web Data|Local State|Cookies)['\"]|['\"/\\\\]logins\\.json['\"]|['\"/\\\\]key[34]\\.db['\"]|state\\.vscdb\\b|Local Storage[/\\\\]{1,2}leveldb|nkbihfbeogaeaoehlefnkodbefgpgknn|bfnaelmomeimhlpmgjnjophhpkkoljpa|Library[/\\\\]{1,2}Keychains|security\\s+(?:find|dump)-(?:generic-password|internet-password|keychain)"
+    # Specific stores (SSH, cloud, browsers, wallets…) have their own vectors below.
+    pattern: 'state\.vscdb\b|Local Storage[/\\]{1,2}leveldb|discord[/\\]{1,2}Local Storage|Slack[/\\]{1,2}Cookies'
 
   - id: ext/input-capture.clipboard-keys
     kind: pattern
@@ -122,3 +119,492 @@ rules:
       - label: "MITRE ATT&CK T1056.001 — Keylogging"
         url: https://attack.mitre.org/techniques/T1056/001/
     pattern: "\\bclipboard\\.readText\\b|['\"]pbpaste\\b|\\bxclip\\s+(?:-o|-out)|\\bxsel\\s+(?:-o|--output|-b)|Get-Clipboard|\\bGetAsyncKeyState\\b|\\bSetWindowsHookEx[AW]?\\b|['\"](?:iohook|uiohook-napi|node-global-key-listener|node-hid-keylogger)['\"]"
+
+  # ---- Deep vectors (phase 2b): one rule per vector, ids `ext/<vector>.<variant>`. ----
+
+  - id: ext/shell-exec.option
+    kind: pattern
+    title: 'Command run through a shell'
+    severity: info
+    languages: [javascript]
+    message: '`{{match}}`: the command string is interpreted by a shell.'
+    pattern: '\bshell\s*:\s*(?:true|!0)\b'
+
+  - id: ext/shell-interpreter.inline
+    kind: pattern
+    title: 'Inline or encoded shell script'
+    severity: warning
+    languages: [javascript]
+    message: 'Runs an inline script (`{{match}}`).'
+    flags: i
+    pattern: '[''"`](?:/bin/)?(?:ba|z)?sh[''"`]\s*,\s*\[\s*[''"`]-c[''"`]|[''"`](?:ba|z)?sh -c\s|[''"`]cmd(?:\.exe)?[''"`]\s*,\s*\[\s*[''"`]/[cC][''"`]|\bcmd(?:\.exe)? /[cC]\s|powershell(?:\.exe)?\W{1,6}(?:[^\n]{0,60}\s)?-(?:e|enc|encodedcommand)\b'
+
+  - id: ext/pipe-to-shell.download
+    kind: pattern
+    title: 'Remote script piped into a shell'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` runs code straight from the network.'
+    flags: i
+    pattern: '\b(?:curl|wget)\b[^\n|;]{0,200}\|\s*(?:sudo\s+)?(?:ba|z)?sh\b|\b(?:iwr|irm|Invoke-WebRequest|Invoke-RestMethod)\b[^\n|]{0,200}\|\s*(?:iex|Invoke-Expression)\b'
+
+  - id: ext/chmod-exec.mode
+    kind: pattern
+    title: 'Makes files executable'
+    severity: info
+    languages: [javascript]
+    message: '`{{match}}` marks a file executable.'
+    pattern: '\bchmod\s+(?:\+x|[0-7]?7[0-7]{2})\b|\bchmod(?:Sync)?\s*\([^,()]{1,120},\s*(?:0o7[0-7]{2}|0?7[0-7]{2}|49[3-9]|50\d|51[01])\s*\)'
+
+  - id: ext/persistence-launchagent.path
+    kind: pattern
+    title: 'LaunchAgent / LaunchDaemon'
+    severity: warning
+    languages: [javascript]
+    message: 'References `{{match}}` (runs at login or boot).'
+    pattern: 'Library[/\\]{1,2}Launch(?:Agents|Daemons)\b'
+
+  - id: ext/persistence-cron.path
+    kind: pattern
+    title: 'Cron job'
+    severity: warning
+    languages: [javascript]
+    message: 'References `{{match}}` (scheduled execution).'
+    pattern: '[''"`]crontab(?:\s|[''"`])|[''"`/]etc/cron(?:tab|\.d|\.hourly|\.daily|\.weekly|\.monthly)\b'
+
+  - id: ext/persistence-shell-rc.path
+    kind: pattern
+    title: 'Shell start-up file'
+    severity: warning
+    languages: [javascript]
+    message: 'References the shell start-up file `{{match}}`.'
+    pattern: '[''"`/\\]\.(?:bashrc|bash_profile|zshrc|zprofile|zshenv|profile)[''"`]|Microsoft\.PowerShell_profile\.ps1|WindowsPowerShell[/\\]{1,2}profile\.ps1'
+
+  - id: ext/persistence-windows.autorun
+    kind: pattern
+    title: 'Windows autorun location'
+    severity: warning
+    languages: [javascript]
+    message: 'References the autorun location `{{match}}`.'
+    flags: i
+    pattern: 'Start Menu[/\\]{1,2}Programs[/\\]{1,2}Startup|CurrentVersion[/\\]{1,2}Run(?:Once)?\b|\bschtasks(?:\.exe)?\s+/create\b'
+
+  - id: ext/service-control.cmd
+    kind: pattern
+    title: 'Service manager'
+    severity: info
+    languages: [javascript]
+    message: 'Uses the service manager (`{{match}}`).'
+    pattern: '[''"`](?:launchctl|systemctl)(?:\s|[''"`])|[''"`]sc(?:\.exe)? (?:create|config)\b'
+
+  - id: ext/privilege-escalation.cmd
+    kind: pattern
+    title: 'Privilege elevation'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` asks for elevated privileges.'
+    flags: i
+    pattern: 'with administrator privileges|[''"`](?:sudo|pkexec|gsudo)(?:\s|[''"`])|\brunas\s+/user|Start-Process[^\n]{0,80}-Verb\s+RunAs'
+
+  - id: ext/ui-automation.api
+    kind: pattern
+    title: 'Drives other applications'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` automates other applications.'
+    pattern: 'tell application \\?[''"]System Events|\bkeystroke\s+\\?[''"]|\bAXUIElement\w*|\bCGEventPost\b|[''"`](?:robotjs|@nut-tree/nut-js|node-key-sender)[''"`]|\bSendKeys\b|\bxdotool\b'
+
+  - id: ext/screen-capture.api
+    kind: pattern
+    title: 'Screen capture'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` captures the screen.'
+    pattern: '[''"`]screencapture(?:\s|[''"`])|\bdesktopCapturer\b|\bgetDisplayMedia\b|[''"`]screenshot-desktop[''"`]|\bCopyFromScreen\b|\bimport -window root\b'
+
+  - id: ext/tcc-tamper.db
+    kind: pattern
+    title: 'macOS privacy database'
+    severity: error
+    languages: [javascript]
+    message: '`{{match}}` touches the macOS privacy (TCC) database.'
+    pattern: '\btccutil\b|\bTCC\.db\b'
+
+  - id: ext/trust-store.add
+    kind: pattern
+    title: 'Adds a trusted root certificate'
+    severity: error
+    languages: [javascript]
+    message: '`{{match}}` adds a trusted certificate.'
+    flags: i
+    pattern: '\badd-trusted-cert\b|\bcertutil(?:\.exe)?\s+(?:-f\s+)?-addstore\b|Import-Certificate[^\n]{0,80}\\Root\b|\bupdate-ca-certificates\b'
+
+  - id: ext/process-kill.cmd
+    kind: pattern
+    title: 'Kills processes by name'
+    severity: info
+    languages: [javascript]
+    message: '`{{match}}` ends other processes.'
+    flags: i
+    pattern: '[''"`](?:pkill|killall|taskkill(?:\.exe)?)(?:\s|[''"`])|[''"`]kill -9\s'
+
+  - id: ext/other-extension-write.path
+    kind: pattern
+    title: 'Editor extensions folder'
+    severity: warning
+    languages: [javascript]
+    message: 'References the editor extensions folder `{{match}}`.'
+    when: '\b(?:writeFile|appendFile|copyFile|rename|unlink|rmSync|rmdir|cpSync|createWriteStream)\w*\s*\('
+    pattern: '[''"`/\\]\.(?:vscode|vscode-insiders|vscode-oss|cursor|windsurf)[/\\]{1,2}extensions\b'
+
+  - id: ext/vscode-config-write.path
+    kind: pattern
+    title: 'Editor settings file on disk'
+    severity: warning
+    languages: [javascript]
+    message: 'References the user settings file `{{match}}`.'
+    when: '\b(?:writeFile|appendFile|createWriteStream)\w*\s*\('
+    pattern: '(?:Code|Code - Insiders|Cursor|VSCodium|Windsurf)[/\\]{1,2}User[/\\]{1,2}(?:settings|keybindings)\.json'
+
+  - id: ext/ssh-keys.path
+    kind: pattern
+    title: 'SSH private keys'
+    severity: warning
+    languages: [javascript]
+    message: 'References the SSH key path `{{match}}`.'
+    pattern: '\.ssh[''"]?\s*[,+]?\s*[''"]?[/\\]{0,2}(?:id_(?:rsa|ed25519|ecdsa|dsa)|authorized_keys)\b|\.ssh[/\\]{1,2}(?:id_\w+|authorized_keys)\b'
+
+  - id: ext/cloud-credentials.path
+    kind: pattern
+    title: 'Cloud credentials'
+    severity: warning
+    languages: [javascript]
+    message: 'References the cloud credential store `{{match}}`.'
+    pattern: '\.aws[''"]?\s*[,+]?\s*[''"]?[/\\]{0,2}(?:credentials|sso[/\\]{1,2}cache)\b|\.config[/\\]{1,2}gcloud\b|application_default_credentials\.json|\.azure[/\\]{1,2}(?:accessTokens\.json|msal_token_cache)'
+
+  - id: ext/registry-tokens.path
+    kind: pattern
+    title: 'Package-registry tokens'
+    severity: warning
+    languages: [javascript]
+    message: 'References the package-registry credential file `{{match}}`.'
+    pattern: '[''"/\\]\.(?:npmrc|yarnrc(?:\.yml)?|pypirc)[''"]|\.cargo[/\\]{1,2}credentials(?:\.toml)?\b'
+
+  - id: ext/git-credentials.path
+    kind: pattern
+    title: 'Git / netrc credentials'
+    severity: warning
+    languages: [javascript]
+    message: 'References the credential file `{{match}}`.'
+    pattern: '[''"/\\]\.git-credentials\b|[''"/\\][._]netrc[''"]|\bgit credential fill\b'
+
+  - id: ext/kube-docker-config.path
+    kind: pattern
+    title: 'Kubernetes / Docker credentials'
+    severity: warning
+    languages: [javascript]
+    message: 'References `{{match}}`.'
+    pattern: '\.docker[/\\]{1,2}config\.json|\.kube[/\\]{1,2}config\b'
+
+  - id: ext/browser-data.path
+    kind: pattern
+    title: 'Browser password / cookie store'
+    severity: error
+    languages: [javascript]
+    message: 'References the browser store `{{match}}`.'
+    pattern: '[''"/\\](?:Login Data|Web Data|Local State|Cookies)[''"]|[''"/\\]logins\.json[''"]|[''"/\\]key[34]\.db[''"]|Google[/\\]{1,2}Chrome[/\\]{1,2}User Data|BraveSoftware[/\\]{1,2}Brave-Browser|Firefox[/\\]{1,2}Profiles|Microsoft[/\\]{1,2}Edge[/\\]{1,2}User Data'
+
+  - id: ext/keychain-access.api
+    kind: pattern
+    title: 'Keychain / DPAPI access'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` reads the OS credential store.'
+    pattern: 'Library[/\\]{1,2}Keychains|\bsecurity\s+(?:find|dump)-(?:generic-password|internet-password|keychain)\b|\bCryptUnprotectData\b|\bCredEnumerate[AW]?\b|[''"`]cmdkey(?:\s|[''"`])'
+
+  - id: ext/crypto-wallet.path
+    kind: pattern
+    title: 'Crypto wallet storage'
+    severity: error
+    languages: [javascript]
+    message: 'References the crypto wallet store `{{match}}`.'
+    pattern: 'nkbihfbeogaeaoehlefnkodbefgpgknn|bfnaelmomeimhlpmgjnjophhpkkoljpa|hnfanknocfeofbddgcijnmhnfnkdnaad|ejbalbakoplchlghecdalmeeeajnimhm|Electrum[/\\]{1,2}wallets|[''"/\\]wallet\.dat[''"]|exodus\.wallet|Ethereum[/\\]{1,2}keystore|\.solana[/\\]{1,2}id\.json'
+
+  - id: ext/shell-history.path
+    kind: pattern
+    title: 'Shell history'
+    severity: warning
+    languages: [javascript]
+    message: 'References the shell history `{{match}}`.'
+    pattern: '[''"/\\]\.(?:bash|zsh|sh)_history[''"]|ConsoleHost_history\.txt'
+
+  - id: ext/env-file-harvest.glob
+    kind: pattern
+    title: 'Searches for .env files'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` collects `.env` files.'
+    pattern: '[''"`](?:\*\*/)+\.env(?:\.\*|\*)?[''"`]'
+
+  - id: ext/env-dump.serialize
+    kind: pattern
+    title: 'Serialises the whole environment'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` captures every environment variable.'
+    pattern: 'JSON\.stringify\s*\(\s*process\.env\s*[,)]|for\s*\(\s*(?:const|let|var)\s+\w+\s+in\s+process\.env\s*\)'
+
+  - id: ext/broad-auth-session.scopes
+    kind: pattern
+    title: 'Broad authentication scopes'
+    severity: info
+    languages: [javascript]
+    message: '`{{match}}` requests broad account access.'
+    pattern: 'getSession\s*\(\s*[''"`](?:github|microsoft)[''"`]\s*,\s*\[[^\]]{0,200}[''"`](?:repo|delete_repo|admin:[\w:]+|workflow|write:packages|https://graph\.microsoft\.com/\.default)[''"`]'
+
+  - id: ext/raw-socket.api
+    kind: pattern
+    title: 'Raw TCP / UDP socket'
+    severity: info
+    languages: [javascript]
+    message: '`{{match}}` opens a raw socket.'
+    pattern: '\b(?:net|tls)\.(?:connect|createConnection)\s*\(|\bdgram\.createSocket\s*\('
+
+  - id: ext/tor-endpoint.onion
+    kind: pattern
+    title: 'Tor hidden service'
+    severity: warning
+    languages: [javascript]
+    message: 'Contacts the Tor hidden service `{{match}}`.'
+    pattern: '\b(?:[a-z2-7]{56}|[a-z2-7]{16})\.onion\b'
+
+  - id: ext/mining-pool.url
+    kind: pattern
+    title: 'Cryptocurrency mining pool'
+    severity: error
+    languages: [javascript]
+    message: '`{{match}}` points to a mining pool.'
+    flags: i
+    pattern: 'stratum\+(?:tcp|ssl|tls)://|\b(?:minexmr|supportxmr|nanopool|2miners|f2pool|ethermine|hashvault|moneroocean|xmrpool)\.(?:com|org|net|pro|eu|stream)\b|[''"`]xmrig(?:\.exe)?[''"`\s]'
+
+  - id: ext/ip-lookup.service
+    kind: pattern
+    title: 'IP / geolocation lookup'
+    severity: info
+    languages: [javascript]
+    message: '`{{match}}` looks up the public address or location of the host.'
+    flags: i
+    pattern: '//(?:[\w-]+\.)*(?:api\.ipify\.org|ipinfo\.io|ip-api\.com|icanhazip\.com|ifconfig\.me|ipapi\.co|checkip\.amazonaws\.com|api\.myip\.com|geolocation-db\.com|freegeoip\.app|ipwho\.is)\b'
+
+  - id: ext/cleartext-endpoint.url
+    kind: pattern
+    title: 'Unencrypted endpoint'
+    severity: info
+    languages: [javascript]
+    message: 'Cleartext URL `{{match}}`.'
+    pattern: '[''"`](?:http|ws)://(?!(?:localhost|127\.|0\.0\.0\.0|\[|10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.|(?:[\w-]+\.)*(?:w3\.org|example\.(?:com|org|net)|apache\.org|purl\.org|json-schema\.org|xml\.org|xmlsoap\.org|adobe\.com|opensource\.org|schemas\.\w+)\b)|[^''"`/]*\$\{)(?:[\w-]+\.)+[a-zA-Z]{2,}\b'
+
+  - id: ext/tls-disabled.option
+    kind: pattern
+    title: 'TLS certificate checks disabled'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` disables certificate validation.'
+    pattern: 'rejectUnauthorized\s*:\s*(?:false|!1)\b|NODE_TLS_REJECT_UNAUTHORIZED[''"`]?\s*\]?\s*=\s*[''"`]?0|\bstrictSSL\s*:\s*(?:false|!1)\b'
+
+  - id: ext/executable-download.url
+    kind: pattern
+    title: 'Downloads an executable'
+    severity: warning
+    languages: [javascript]
+    message: 'Downloads the executable `{{match}}`.'
+    flags: i
+    pattern: '[''"`]https?://[^\s''"`]{1,300}\.(?:exe|dll|msi|dmg|pkg|ps1|bat|scr)(?:\?[^\s''"`]*)?[''"`]'
+
+  - id: ext/websocket-c2.url
+    kind: pattern
+    title: 'WebSocket to an IP or odd port'
+    severity: warning
+    languages: [javascript]
+    message: 'Persistent channel to `{{match}}`.'
+    pattern: '[''"`]wss?://(?!localhost|127\.|0\.0\.0\.0|\[|10\.|192\.168\.)(?:(?:\d{1,3}\.){3}\d{1,3}|[\w.-]+:(?!(?:80|443)\b)\d{2,5})'
+
+  - id: ext/packer.signature
+    kind: pattern
+    title: 'Packed JavaScript'
+    severity: warning
+    languages: [javascript]
+    message: 'Packer signature `{{match}}`.'
+    pattern: 'eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*[dr]\s*\)|\$=~\[\];\$=\{___:|\[\]\[\(!\[\]\+\[\]\)\[\+\[\]\]'
+
+  - id: ext/charcode-chain.decode
+    kind: pattern
+    title: 'Character-code decoding'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` builds text from character codes.'
+    pattern: 'String\.fromCharCode\s*\(\s*(?:\d{2,3}\s*,\s*){15,}|fromCharCode\s*\(\s*[\w.$\[\]]+\s*\^\s*[\w.$\[\]]+\s*\)'
+
+  - id: ext/decode-eval.chain
+    kind: pattern
+    title: 'Decoded string evaluated'
+    severity: error
+    languages: [javascript]
+    message: '`{{match}}` decodes text and runs it as code.'
+    pattern: '\b(?:eval|Function)\s*\(\s*(?:atob\s*\(|Buffer\.from\s*\([^()]{1,200}[''"`](?:base64|hex)[''"`]\s*\)\s*\.toString\s*\()'
+
+  - id: ext/wasm-blob.inline
+    kind: pattern
+    title: 'Inline WebAssembly'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` compiles WebAssembly from an inline string.'
+    pattern: 'WebAssembly\.(?:instantiate|compile|Module)\s*\(\s*(?:new\s+Uint8Array\s*\(\s*)?(?:Buffer\.from\s*\(\s*[''"`][A-Za-z0-9+/=]{200}|Uint8Array\.from\s*\(\s*atob\s*\(\s*[''"`][A-Za-z0-9+/=]{200})'
+
+  - id: ext/anti-debug.trap
+    kind: pattern
+    title: 'Anti-debugging'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` hinders debugging.'
+    pattern: 'setInterval\s*\(\s*(?:function\s*\(\s*\)\s*\{\s*debugger|\(\s*\)\s*=>\s*\{?\s*debugger)|while\s*\(\s*(?:true|!0|1)\s*\)\s*\{?\s*debugger\b|[''"`]debu[''"`]\s*\+\s*[''"`]gger[''"`]|\binspector\.url\s*\(\s*\)'
+
+  - id: ext/sandbox-evasion.check
+    kind: pattern
+    title: 'Analysis-environment check'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` checks for a VM or analysis tool.'
+    pattern: '[''"`](?:VBOX|VirtualBox|VMware|QEMU|Parallels Virtual Platform)[''"`]|[''"`](?:[Ww]ireshark|[Pp]rocmon|x64dbg|[Oo]lly[Dd]bg|[Ff]iddler|[Pp]rocess[Hh]acker|ida64)(?:\.exe)?[''"`]|\bsysctl\s+-n\s+hw\.model\b'
+
+  - id: ext/self-modifying.write
+    kind: pattern
+    title: 'Rewrites its own code'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` writes code into its own folder.'
+    pattern: '\b(?:writeFile|writeFileSync|appendFile|appendFileSync)\s*\(\s*(?:__filename\b|[\w.]*(?:join|resolve)\s*\(\s*(?:__dirname|[\w.]*extensionPath|[\w.]*extensionUri\.fsPath)\s*,[^()]{0,120}\.(?:js|cjs|mjs)[''"`])'
+
+  - id: ext/webview-no-csp.missing
+    kind: pattern
+    title: 'Webview scripts without CSP'
+    severity: info
+    languages: [javascript]
+    message: '`{{match}}` without a Content-Security-Policy in the same bundle.'
+    unless: 'Content-Security-Policy'
+    pattern: '\benableScripts\s*:\s*(?:true|!0)\b'
+
+  - id: ext/webview-unsafe-csp.policy
+    kind: pattern
+    title: 'Weak webview CSP'
+    severity: info
+    languages: [javascript, html]
+    message: 'Webview policy allows `{{match}}`.'
+    pattern: 'script-src[^;"]{0,200}?''unsafe-(?:eval|inline)''|script-src[^;"]{0,200}?\shttps?://[\w.-]+'
+
+  - id: ext/webview-remote-script.tag
+    kind: pattern
+    title: 'Remote script in a webview'
+    severity: warning
+    languages: [javascript, html]
+    message: '`{{match}}` loads script from the network.'
+    flags: i
+    pattern: '<script[^>]{0,200}\ssrc\s*=\s*\\?[''"]https?://[^''"\\\s>]+'
+
+  - id: ext/webview-broad-resources.roots
+    kind: pattern
+    title: 'Webview can read the whole disk'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` exposes the root or home folder to the webview.'
+    pattern: 'localResourceRoots\s*:\s*\[[^\]]{0,80}Uri\.file\s*\(\s*(?:[''"`]/[''"`]|[\w.]*homedir\s*\(\s*\)|[''"`][A-Za-z]:\\{0,2}[''"`])'
+
+  - id: ext/command-uris.enabled
+    kind: pattern
+    title: 'Webview command links'
+    severity: info
+    languages: [javascript]
+    message: '`{{match}}` lets webview content run commands.'
+    pattern: '\benableCommandUris\s*:\s*(?:true|!0)\b'
+
+  - id: ext/trusted-markdown.flag
+    kind: pattern
+    title: 'Trusted Markdown'
+    severity: info
+    languages: [javascript]
+    message: '`{{match}}` enables command links in Markdown.'
+    pattern: '\bisTrusted\s*(?:=|:)\s*(?:true|!0)\b'
+
+  - id: ext/webview-remote-frame.tag
+    kind: pattern
+    title: 'Remote site in a webview'
+    severity: info
+    languages: [javascript, html]
+    message: '`{{match}}` embeds a remote site.'
+    flags: i
+    pattern: '<iframe[^>]{0,200}\ssrc\s*=\s*\\?[''"]https?://[^''"\\\s>]+|frame-src[^;"]{0,200}?\shttps?://[\w.-]+'
+
+  - id: ext/terminal-injection.hidden
+    kind: pattern
+    title: 'Hidden terminal'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` runs a terminal the user cannot see.'
+    pattern: '\bhideFromUser\s*:\s*(?:true|!0)\b'
+
+  - id: ext/terminal-injection.send
+    kind: pattern
+    title: 'Types commands into a terminal'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` types a command into the terminal.'
+    pattern: '\.sendText\s*\(\s*[''"`](?:curl|wget|powershell|pwsh|iex|bash -c|sh -c|chmod|rm -rf|sudo)\b'
+
+  - id: ext/terminal-sequence.command
+    kind: pattern
+    title: 'Raw terminal input'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` injects keystrokes into the terminal.'
+    pattern: 'workbench\.action\.terminal\.sendSequence'
+
+  - id: ext/settings-tamper.update
+    kind: pattern
+    title: 'Changes security settings'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` changes a security setting.'
+    pattern: '\.update\s*\(\s*[''"`](?:security\.workspace\.trust\.\w+|http\.proxy\w*|http\.proxyStrictSSL|extensions\.autoUpdate|extensions\.autoCheckUpdates|terminal\.integrated\.env\.\w+)[''"`]|getConfiguration\s*\(\s*[''"`](?:security\.workspace\.trust|http|terminal\.integrated\.env\.\w+)[''"`]\s*\)\s*\.update\s*\('
+
+  - id: ext/extension-install.command
+    kind: pattern
+    title: 'Installs extensions'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` installs another extension.'
+    pattern: 'workbench\.extensions\.installExtension\b|--install-extension\b'
+
+  - id: ext/extension-uninstall.command
+    kind: pattern
+    title: 'Removes or disables extensions'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` removes or disables an extension.'
+    pattern: 'workbench\.extensions\.uninstallExtension\b|--uninstall-extension\b|workbench\.extensions\.action\.disable\w*|[/\\]extensions[/\\]{1,2}\.obsolete\b'
+
+  - id: ext/shell-script-download.pipe
+    kind: pattern
+    title: 'Shell script runs downloaded code'
+    severity: warning
+    languages: [shellscript]
+    message: '`{{match}}` runs downloaded code.'
+    pattern: '\b(?:curl|wget)\b[^\n|;]{0,200}\|\s*(?:sudo\s+)?(?:ba|z)?sh\b|\b(?:curl|wget)\b[^\n]{0,200}\s(?:-o|-O|--output)\s+\S+[\s\S]{0,400}?\bchmod\s+(?:\+x|[0-7]?7[0-7]{2})\b'
+
+  - id: ext/powershell-script.download
+    kind: pattern
+    title: 'Script downloads or decodes commands'
+    severity: warning
+    languages: [powershell, bat]
+    message: '`{{match}}` downloads or decodes commands.'
+    flags: i
+    pattern: '\b(?:IEX|Invoke-Expression)\b|\s-(?:enc|EncodedCommand)\s+[A-Za-z0-9+/=]{20,}|\bbitsadmin\b[^\n]{0,80}/transfer|\.Download(?:String|File)\s*\(|\bcertutil\b[^\n]{0,40}-urlcache'

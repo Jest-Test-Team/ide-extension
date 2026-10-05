@@ -94,4 +94,42 @@ export const packedPayload: CustomRule = {
   },
 };
 
-export const EXTSCAN_CUSTOM_RULES: CustomRule[] = [obfuscatorMarkers, packedPayload];
+/**
+ * High-entropy encoded literals with no evaluation sink nearby (packed-payload covers those).
+ * Reported once per file with the count; bundled fonts or wasm also trip this, hence a low weight.
+ */
+export const encodedBlob: CustomRule = {
+  kind: 'custom',
+  id: 'ext/encoded-blob.literal',
+  title: 'Long encoded literal',
+  severity: 'info',
+  languages: ['javascript'],
+  message: '{{count}} encoded literal(s), the first {{length}} characters long (entropy {{entropy}} bits/char).',
+  refs: [OBF_REF],
+  check(ctx: RuleContext): Finding[] {
+    let first: { start: number; end: number; length: number; entropy: number } | undefined;
+    let count = 0;
+    for (const m of ctx.text.matchAll(BLOB)) {
+      if (m[2].startsWith('\\x')) {
+        continue;
+      }
+      const entropy = shannonEntropy(m[2]);
+      if (entropy < BLOB_ENTROPY) {
+        continue;
+      }
+      const start = m.index ?? 0;
+      const around = ctx.text.slice(Math.max(0, start - SINK_WINDOW), Math.min(ctx.text.length, start + m[0].length + SINK_WINDOW));
+      if (SINK.test(around)) {
+        continue; // reported by packed-payload
+      }
+      count++;
+      first ??= { start, end: start + Math.min(m[0].length, 80), length: m[2].length, entropy };
+    }
+    if (!first) {
+      return [];
+    }
+    return [ctx.report(ctx.lines.rangeOf(first.start, first.end), undefined, { count: String(count), length: String(first.length), entropy: first.entropy.toFixed(2) })];
+  },
+};
+
+export const EXTSCAN_CUSTOM_RULES: CustomRule[] = [obfuscatorMarkers, packedPayload, encodedBlob];

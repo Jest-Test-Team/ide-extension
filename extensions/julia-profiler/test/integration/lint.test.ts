@@ -38,7 +38,7 @@ suite('julia linter', () => {
 
   test('adds runtime findings from a loaded profile', async () => {
     const text = new TextDecoder().decode(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(root, 'invdemo.profile.json')));
-    const local = text.split('/work/InvDemo').join(vscode.Uri.joinPath(root, 'InvDemo').fsPath);
+    const local = text.split('/work/InvDemo').join(JSON.stringify(vscode.Uri.joinPath(root, 'InvDemo').fsPath).slice(1, -1));
     const tmp = vscode.Uri.joinPath(root, '..', '..', 'out', 'invdemo.local.json');
     await vscode.workspace.fs.writeFile(tmp, new TextEncoder().encode(local));
     await vscode.commands.executeCommand('juliaProfiler.openProfile', tmp);

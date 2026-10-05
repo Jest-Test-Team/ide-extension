@@ -142,9 +142,18 @@ describe('scoring', () => {
   });
 
   it('capabilities alone are capped at medium; a combination unlocks high', () => {
-    const caps = [sig('ext/credential-path'), sig('ext/input-capture'), sig('ext/obfuscated'), sig('ext/native-binary')];
-    expect(scoreExtension(caps)).toMatchObject({ score: 9, level: 'medium', capped: true });
+    // Spread over categories, so diminishing returns inside a category do not hide them.
+    const caps = [sig('ext/credential-path'), sig('ext/shell-interpreter'), sig('ext/obfuscated'), sig('ext/native-binary')];
+    expect(scoreExtension(caps)).toMatchObject({ score: 10, level: 'medium', capped: true });
+    expect(scoreExtension(caps).categories.map((c) => c.category)).toEqual(['data', 'obfuscation', 'process', 'native']);
     expect(scoreExtension([...caps, sig('ext/exfil-endpoint')])).toMatchObject({ level: 'high', capped: false });
+  });
+
+  it('damps several signals of one capability, but adds up independent evidence', () => {
+    const proc = scoreExtension([sig('ext/privilege-escalation'), sig('ext/shell-interpreter'), sig('ext/process-kill'), sig('ext/chmod-exec')]);
+    expect(proc.categories).toEqual([{ category: 'process', score: 5 + 3 / 2 + 2 / 4 + 2 / 8 }].map((c) => ({ ...c, score: Math.round(c.score * 10) / 10 })));
+    const manifest = scoreExtension([sig('ext/typosquat'), sig('ext/activates-on-startup')]);
+    expect(manifest.categories[0].score).toBe(SIGNALS['ext/typosquat'].weight + SIGNALS['ext/activates-on-startup'].weight);
   });
 
   it('known malware forces high even when allowlisted', () => {

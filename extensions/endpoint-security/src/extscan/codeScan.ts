@@ -39,7 +39,22 @@ export interface CodeScanResult {
   bytesScanned: number;
 }
 
-const JS = new Set(['.js', '.cjs', '.mjs']);
+/** Files the code rules read, by extension → language id. */
+const SOURCES: Record<string, string> = {
+  '.js': 'javascript',
+  '.cjs': 'javascript',
+  '.mjs': 'javascript',
+  '.html': 'html',
+  '.htm': 'html',
+  '.sh': 'shellscript',
+  '.bash': 'shellscript',
+  '.zsh': 'shellscript',
+  '.command': 'shellscript',
+  '.ps1': 'powershell',
+  '.psm1': 'powershell',
+  '.bat': 'bat',
+  '.cmd': 'bat',
+};
 const NATIVE = new Set(['.node', '.dll', '.dylib', '.so', '.exe']);
 const SKIP_DIRS = new Set(['.git', '.svn', '.hg']);
 const MAX_MESSAGE = 240;
@@ -68,7 +83,7 @@ async function walk(dir: string, includeNodeModules: boolean, out: Walk = { js: 
       }
     } else if (e.isFile()) {
       const ext = extname(e.name).toLowerCase();
-      if (JS.has(ext)) {
+      if (SOURCES[ext]) {
         out.js.push(p);
       } else if (NATIVE.has(ext) || /\.so(\.\d+)+$/.test(e.name)) {
         out.native.push(p);
@@ -97,7 +112,8 @@ function prioritise(files: string[], dir: string, pkg: Record<string, unknown>):
 }
 
 /**
- * Scans one extension's folder: runs the code rules on its JavaScript and lists native binaries.
+ * Scans one extension's folder: runs the code rules on its JavaScript, HTML and shell / PowerShell /
+ * batch scripts, and lists native binaries.
  * Reads files only — nothing is executed or loaded.
  */
 export async function scanExtensionCode(
@@ -139,7 +155,7 @@ export async function scanExtensionCode(
     const uri = pathToFileURL(file).toString();
     let findings: Finding[];
     try {
-      findings = await engine.run({ uri, path: file, languageId: 'javascript', text });
+      findings = await engine.run({ uri, path: file, languageId: SOURCES[extname(file).toLowerCase()], text });
     } finally {
       // RuleEngine caches the tree per URI; drop it, or thousands of files stay in wasm memory.
       host.forget(uri);

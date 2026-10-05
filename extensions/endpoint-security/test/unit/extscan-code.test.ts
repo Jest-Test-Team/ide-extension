@@ -47,16 +47,18 @@ describe('extension code scan', () => {
     expect(code.filesScanned).toBe(2);
     expect(hits(code.signals)).toEqual({
       'ext/process-exec': ['extension.js:3 child-process'],
-      'ext/credential-path': ['extension.js:8 files', 'extension.js:9 files'],
+      'ext/ssh-keys': ['extension.js:8 path'],
+      'ext/cloud-credentials': ['extension.js:9 path'],
       'ext/exfil-endpoint': ['extension.js:10 service'],
       'ext/hardcoded-ip': ['extension.js:11 url'],
       'ext/input-capture': ['extension.js:12 clipboard-keys'],
       'ext/dynamic-code': ['extension.js:15 eval', 'payload.js:7 eval'],
       'ext/obfuscated': ['payload.js:2 obfuscator', 'payload.js:7 packed-payload'],
+      'ext/decode-eval': ['payload.js:7 chain'],
       'ext/native-binary': ['helper.node:1'],
     });
     expect(score.level).toBe('high');
-    expect(score.boosts.map((b) => b.because[0])).toEqual(['ext/credential-path', 'ext/obfuscated', 'ext/activates-on-startup']);
+    expect(score.boosts.map((b) => b.because[0])).toEqual(['ext/ssh-keys', 'ext/obfuscated', 'ext/input-capture', 'ext/activates-on-startup']);
   });
 
   it('ordinary language-server client stays low', async () => {

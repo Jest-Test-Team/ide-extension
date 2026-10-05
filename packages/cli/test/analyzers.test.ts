@@ -38,7 +38,7 @@ describe.runIf(posix)('deep scan with analyzers', () => {
     expect(sig?.locations[0].file).toMatch(/lib[\\/]extension\.js$/);
     expect(sig?.locations[0].finding.range.start.line).toBe(2);
     expect(json.results[0].risk.signals.some((s) => s.id === 'ext/python-exec')).toBe(false);
-    expect(json.coverage.ran['ext/shell-exec']).toEqual(['rs']);
+    expect(json.coverage.ran['ext/shell-exec']).toEqual(['ts', 'rs']);
     expect(json.coverage.ran['ext/process-exec']).toEqual(['ts']);
     const rs = json.coverage.analyzers.find((a) => a.engine === 'rs')!;
     expect(rs.ran).toBe(2);
@@ -60,7 +60,7 @@ describe.runIf(posix)('deep scan with analyzers', () => {
   it('runs TypeScript only without --deep', async () => {
     const io = captureIo(REPO);
     await main(['scan-extension', DEEP, '--format', 'text', '--fail-on', 'none'], io);
-    expect(io.stdout()).toMatch(/Coverage: 37\/147 vectors ran \(TypeScript core\)/);
+    expect(io.stdout()).toMatch(/Coverage: 96\/147 vectors ran \(TypeScript core\)/);
     expect(io.stdout()).toContain('Run with --deep');
   });
 
