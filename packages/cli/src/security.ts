@@ -2,8 +2,13 @@ import type { Finding, Rule } from '@ide-ext/core';
 import { toExtensionMarkdown, toExtensionSarif } from '../../../extensions/endpoint-security/src/extscan/report';
 import { JULIA_RULES } from '../../../extensions/julia-profiler/src/rules';
 import { defaultExtensionDirs, ENDPOINT_TOOL, endpointRules, extensionsText, scanExtensions } from './endpoint';
+import { coverageData, coverageText, deepOptions, DEEP_FLAGS } from './analyzers/coverage';
+import { analyzerSearchPath, discoverAnalyzers } from './analyzers/host';
+import { ENGINE_BINARIES, ENGINE_NAMES, type EngineId } from './analyzers/protocol';
+import { SIGNALS } from '../../../extensions/endpoint-security/src/extscan/signals';
 import { analysisText, analyzeExtensions } from './extAnalysis';
 import { existsSync } from 'node:fs';
+import { delimiter } from 'node:path';
 import { HW_TOOL, hwRules } from './hw';
 import { JULIA_TOOL } from './julia';
 import { processIo, runTool, UsageError, VERSION, type Command, type Io, type Tool } from './lib/args';
@@ -49,6 +54,7 @@ const scan: Command = {
     'extension-dir': { type: 'string', multiple: true, value: '<dir>', description: 'Extensions folder to scan (default: VS Code, Insiders, VSCodium, Cursor, Windsurf, remote)' },
     allowlist: { type: 'string', multiple: true, value: '<publisher.name[@version]>', description: 'Trusted extensions' },
     'extension-fail-on': { type: 'string', value: '<high|medium|none>', description: 'Exit 1 when an installed extension reaches this risk level', default: 'high' },
+    ...DEEP_FLAGS,
   },
   examples: [
     'jest-security scan                          # code in . + installed extensions → report + security.sarif',
@@ -67,6 +73,7 @@ const scan: Command = {
     const paths = positionals.length ? positionals : ['.'];
     const code = await lintFiles(rules, paths, io, !!flags.quiet, patternsFrom(flags, io));
 
+    const deepOpts = deepOptions(flags);
     let ext: Awaited<ReturnType<typeof scanExtensions>> | undefined;
     const dirs = ((flags['extension-dir'] as string[] | undefined) ?? []).map((d) => resolve(io.cwd, d));
     const extDirs = dirs.length ? dirs : defaultExtensionDirs();
@@ -76,6 +83,9 @@ const scan: Command = {
         trusted: [],
         includeNodeModules: true,
         maxFiles: 2000,
+        online: deepOpts.online,
+        analyzers: deepOpts.analyzers,
+        analyzerTimeoutMs: deepOpts.analyzerTimeoutMs,
         onProgress: (id) => io.color && io.err(`\rscanning extension ${id.padEnd(55).slice(0, 55)}`),
       });
       if (io.color) {
@@ -89,10 +99,12 @@ const scan: Command = {
     let file: string;
     if (format === 'sarif') {
       const codeLog = JSON.parse(renderFindings('sarif', io, { toolName: 'jest-security', title: codeTitle, rules, findings: code })) as { runs: unknown[] };
-      const runs = [...codeLog.runs, ...(ext ? (toExtensionSarif(extResults, ext.codeRules, VERSION) as { runs: unknown[] }).runs : [])];
+      const extRuns = ext ? (toExtensionSarif(extResults, ext.codeRules, VERSION) as { runs: Record<string, unknown>[] }).runs : [];
+      extRuns.forEach((r) => (r.properties = { ...(r.properties as object), coverage: coverageData(ext!.coverage) }));
+      const runs = [...codeLog.runs, ...extRuns];
       file = JSON.stringify({ ...codeLog, runs }, null, 2) + '\n';
     } else if (format === 'json') {
-      file = JSON.stringify({ code: [...code].map(([f, findings]) => ({ file: f, findings })), extensions: extResults }, null, 2) + '\n';
+      file = JSON.stringify({ code: [...code].map(([f, findings]) => ({ file: f, findings })), extensions: extResults, coverage: ext ? coverageData(ext.coverage) : null }, null, 2) + '\n';
     } else if (format === 'md') {
       file = renderFindings('md', io, { toolName: 'jest-security', title: codeTitle, rules, findings: code }) + (ext ? '\n' + toExtensionMarkdown(extResults, ext.codeRules) + '\n' : '');
     } else {
@@ -108,7 +120,7 @@ const scan: Command = {
       `== Code: ${paths.join(', ')} ==`,
       textReport(io, code).trimEnd(),
       '',
-      ...(ext ? [`== Installed extensions: risk ranking and benchmark ==`, extensionsText(io, extResults, usedDirs).trimEnd(), ''] : []),
+      ...(ext ? [`== Installed extensions: risk ranking and benchmark ==`, extensionsText(io, extResults, usedDirs).trimEnd(), '', coverageText(ext.coverage, deepOpts.deep).trimEnd(), ''] : []),
       '== Summary ==',
       `  Code:       ${c.error} error(s), ${c.warning} warning(s), ${c.info + c.hint} info in ${code.size} file(s)`,
       ext ? `  Extensions: ${lv.high} high, ${lv.medium} medium, ${lv.low} low risk (${extResults.length} scanned)` : '  Extensions: skipped (--no-extensions)',
@@ -130,6 +142,13 @@ const scan: Command = {
   },
 };
 
+/** Attaches scan coverage to every run of a SARIF log. */
+function withCoverage(sarif: object, coverage: object): object {
+  const log = sarif as { runs: Record<string, unknown>[] };
+  log.runs.forEach((r) => (r.properties = { ...(r.properties as object), coverage }));
+  return log;
+}
+
 const scanExtension: Command = {
   name: 'scan-extension',
   summary: 'Find every installed extension (VS Code, Insiders, VSCodium, Cursor, Windsurf, remote), scan and analyse them; report in the terminal and security.sarif',
@@ -143,9 +162,12 @@ const scanExtension: Command = {
     'node-modules': { type: 'boolean', description: 'Also scan bundled node_modules (--no-node-modules for a faster scan)', default: true },
     'max-files': { type: 'number', description: 'Maximum JavaScript files scanned per extension', default: 2000 },
     'fail-on': { type: 'string', value: '<high|medium|none>', description: 'Exit 1 when an extension reaches this risk level', default: 'high' },
+    ...DEEP_FLAGS,
   },
   examples: [
     'jest-security scan-extension                       # every editor → report + security.sarif',
+    'jest-security scan-extension --deep                # plus the installed Rust / Go / Python / Julia analyzers',
+    'jest-security scan-extension --deep --online       # plus Marketplace / OSV / registry lookups',
     'jest-security scan-extension --details --format md --out extensions.md',
     'jest-security scan-extension ~/.vscode/extensions/ash-blade.postgresql-hacker-helper-1.18.0',
   ],
@@ -163,11 +185,15 @@ const scanExtension: Command = {
     if (!dirs.length) {
       throw new Error(`no extensions folder found (looked in ${candidates.join(', ')})`);
     }
-    const { results: all, codeRules } = await scanExtensions(dirs, {
+    const deepOpts = deepOptions(flags);
+    const { results: all, codeRules, coverage } = await scanExtensions(dirs, {
       allowlist: (flags.allowlist as string[] | undefined) ?? [],
       trusted: (flags['trusted-publisher'] as string[] | undefined) ?? [],
       includeNodeModules: flags['node-modules'] !== false,
       maxFiles: flags['max-files'] as number,
+      online: deepOpts.online,
+      analyzers: deepOpts.analyzers,
+      analyzerTimeoutMs: deepOpts.analyzerTimeoutMs,
       onProgress: (id) => io.color && io.err(`\rscanning ${id.padEnd(60).slice(0, 60)}`),
     });
     if (io.color) {
@@ -186,6 +212,9 @@ const scanExtension: Command = {
       '== Analysis ==',
       analysisText(io, analysis).trimEnd(),
       '',
+      '== Coverage ==',
+      coverageText(coverage, deepOpts.deep).trimEnd(),
+      '',
       '== Summary ==',
       `  ${analysis.total} extension(s): ${analysis.levels.high} high, ${analysis.levels.medium} medium, ${analysis.levels.low} low risk.`,
       '  Heuristic: risk signals and their reasons, not a verdict; many legitimate extensions run programs or read credentials.',
@@ -193,11 +222,11 @@ const scanExtension: Command = {
     ].join('\n');
     const file =
       format === 'sarif'
-        ? JSON.stringify(toExtensionSarif(results, codeRules, VERSION), null, 2) + '\n'
+        ? JSON.stringify(withCoverage(toExtensionSarif(results, codeRules, VERSION), coverageData(coverage)), null, 2) + '\n'
         : format === 'md'
-          ? toExtensionMarkdown(results, codeRules) + '\n'
+          ? toExtensionMarkdown(results, codeRules) + '\n\n## Coverage\n\n```text\n' + coverageText(coverage, true) + '```\n'
           : format === 'json'
-            ? JSON.stringify({ folders: dirs, analysis, results }, null, 2) + '\n'
+            ? JSON.stringify({ folders: dirs, analysis, coverage: coverageData(coverage), results }, null, 2) + '\n'
             : report;
     if (flags.out === '-') {
       io.out(file);
@@ -210,6 +239,47 @@ const scanExtension: Command = {
     }
     const limit = fail === 'none' ? Infinity : RISK[fail as 'high' | 'medium'];
     return results.some((r) => RISK[r.risk.level] >= limit) ? 1 : 0;
+  },
+};
+
+async function analyzerStatus(): Promise<string[]> {
+  const { found, problems } = await discoverAnalyzers();
+  const owned = (e: EngineId) => Object.values(SIGNALS).filter((s) => (s.engines as string[]).includes(e)).length;
+  const lines: string[] = [];
+  for (const engine of ['rs', 'go', 'py', 'jl'] as EngineId[]) {
+    const a = found.find((f) => f.engine === engine);
+    const p = problems.find((x) => x.engine === engine);
+    lines.push(
+      a
+        ? `  ✔ ${ENGINE_NAMES[engine].padEnd(16)} ${a.info.name} ${a.info.version}: ${a.info.vectors.length}/${owned(engine)} vectors (${a.path})`
+        : `  – ${ENGINE_NAMES[engine].padEnd(16)} ${ENGINE_BINARIES[engine]}: ${p?.reason ?? 'not installed'} (${owned(engine)} vectors need it)`,
+    );
+  }
+  return lines;
+}
+
+const analyzersCmd: Command = {
+  name: 'analyzers',
+  summary: 'Show the optional deep-inspection analyzers (Rust, Go, Python, Julia): installed, version, vectors',
+  async run(_args, io) {
+    const tsCount = Object.values(SIGNALS).filter((s) => (s.engines as string[]).includes('ts')).length;
+    io.out(
+      [
+        `Vector registry: ${Object.keys(SIGNALS).length} vectors; TypeScript core owns ${tsCount}.`,
+        '',
+        'Analyzers:',
+        ...(await analyzerStatus()),
+        '',
+        'Search path (first match wins):',
+        ...(process.env.JEST_ANALYZERS_DIR ? [`  $JEST_ANALYZERS_DIR (${process.env.JEST_ANALYZERS_DIR})`] : []),
+        `  ${analyzerSearchPath()[process.env.JEST_ANALYZERS_DIR ? process.env.JEST_ANALYZERS_DIR.split(delimiter).length : 0]}`,
+        '  …then PATH',
+        '',
+        'Use them with: jest-security scan-extension --deep   (or --analyzers rs,go)',
+        '',
+      ].join('\n'),
+    );
+    return 0;
   },
 };
 
@@ -227,6 +297,7 @@ const doctor: Command = {
         io.out(`  ✘ ${kind.padEnd(9)} ${(err as Error).message}\n`);
       }
     }
+    io.out(`\nDeep-inspection analyzers (optional):\n${(await analyzerStatus()).join('\n')}\n`);
     io.out('\nExternal tools:\n');
     for (const [name, why] of [
       ['julia', 'jest-julia analyze / bench'],
@@ -255,6 +326,7 @@ export const SECURITY_TOOL: Tool = {
     scan,
     scanExtension,
     { ...scanExtension, name: 'scan-extensions', summary: 'Alias of scan-extension' },
+    analyzersCmd,
     doctor,
   ],
   footer: 'Examples:\n  jest-security scan                      # full audit: code + installed extensions → report + security.sarif\n  jest-security scan-extension            # installed extensions only: discover, scan, analyse → report + security.sarif\n  jest-security endpoint simulate attack.ptree.yaml\n  jest-security hw entropy trng.bin --bits 8\n  jest-security julia report profile.json',

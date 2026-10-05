@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+// Mock Rust analyzer for protocol tests: flags `shell: true` and sends a few malformed / foreign messages.
+const fs = require('fs');
+const path = require('path');
+if (process.argv[2] === 'info') {
+  process.stdout.write(JSON.stringify({ name: 'jest-ext-rs', version: '0.0.0-mock', protocol: 1, vectors: ['ext/shell-exec', 'ext/download-exec', 'ext/python-exec'] }) + '\n');
+  process.exit(0);
+}
+let input = '';
+process.stdin.on('data', (b) => (input += b));
+process.stdin.on('end', () => {
+  const req = JSON.parse(input);
+  const out = (m) => process.stdout.write(JSON.stringify(m) + '\n');
+  for (const ext of req.extensions) {
+    out({ type: 'progress', ext: ext.id });
+    const walk = (dir) =>
+      fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
+    for (const file of walk(ext.path).filter((f) => f.endsWith('.js'))) {
+      fs.readFileSync(file, 'utf8')
+        .split('\n')
+        .forEach((line, i) => {
+          if (/shell:\s*true/.test(line) && req.vectors.includes('ext/shell-exec')) {
+            out({ type: 'signal', ext: ext.id, vector: 'ext/shell-exec', message: 'spawn with shell: true', locations: [{ file: path.relative(ext.path, file), line: i + 1, col: 1 }], confidence: 0.9 });
+          }
+        });
+    }
+    // Not owned by the Rust analyzer → must be rejected by the host.
+    out({ type: 'signal', ext: ext.id, vector: 'ext/python-exec', message: 'should be rejected' });
+  }
+  process.stdout.write('this is not json\n');
+  out({ type: 'done', ran: req.vectors.filter((v) => v !== 'ext/python-exec') });
+});

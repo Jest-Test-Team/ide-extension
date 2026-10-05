@@ -1,7 +1,7 @@
 import type { Rule } from '@ide-ext/core';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { CONSTANTS, FUNCTIONS, signature } from '../../../extensions/endpoint-security/src/apiDb';
 import { API_RULES } from '../../../extensions/endpoint-security/src/apiRules';
 import { COMPLIANCE_CUSTOM_RULES } from '../../../extensions/endpoint-security/src/complianceRules';
@@ -12,7 +12,13 @@ import { manifestSignals } from '../../../extensions/endpoint-security/src/extsc
 import { toExtensionMarkdown, toExtensionSarif } from '../../../extensions/endpoint-security/src/extscan/report';
 import type { ExtResult } from '../../../extensions/endpoint-security/src/extscan/scanner';
 import { isAllowlisted, scoreExtension } from '../../../extensions/endpoint-security/src/extscan/score';
-import { SIGNALS } from '../../../extensions/endpoint-security/src/extscan/signals';
+import { signal, SIGNALS, type Signal } from '../../../extensions/endpoint-security/src/extscan/signals';
+import { coreVectors, MARKETPLACE_VECTORS } from '../../../extensions/endpoint-security/src/extscan/coreVectors';
+import { lookupMarketplace, marketplaceSignals } from '../../../extensions/endpoint-security/src/extscan/marketplace';
+import type { ExtInfo } from '../../../extensions/endpoint-security/src/extscan/manifest';
+import { coverageText, deepOptions, DEEP_FLAGS } from './analyzers/coverage';
+import { discoverAnalyzers, runAnalyzer } from './analyzers/host';
+import { ENGINE_NAMES, PROTOCOL_VERSION, type AnalyzerMessage, type EngineId } from './analyzers/protocol';
 import { serveHttp, serveStdio } from '../../../extensions/endpoint-security/src/ptree/agent';
 import { parseRules, parseScenario, simulate, type SimulationResult } from '../../../extensions/endpoint-security/src/ptree/engine';
 import { loadBuiltInPacks, rulesOf } from '../../../extensions/endpoint-security/src/rulePacks';
@@ -192,13 +198,74 @@ export function defaultExtensionDirs(): string[] {
 
 const RANK = { high: 2, medium: 1, low: 0 } as const;
 
-export async function scanExtensions(dirs: string[], opts: { allowlist: string[]; trusted: string[]; includeNodeModules: boolean; maxFiles: number; onProgress?: (id: string) => void }): Promise<{ results: ExtResult[]; codeRules: Rule[] }> {
+export interface ScanOptions {
+  allowlist: string[];
+  trusted: string[];
+  includeNodeModules: boolean;
+  maxFiles: number;
+  /** Marketplace lookup and online analyzer vectors. */
+  online?: boolean;
+  /** Analyzers to use; empty = TypeScript core only. */
+  analyzers?: EngineId[];
+  analyzerTimeoutMs?: number;
+  onProgress?: (id: string) => void;
+}
+
+export interface ScanCoverage {
+  online: boolean;
+  /** Vector id → engines that ran it. */
+  ran: Map<string, string[]>;
+  analyzers: { engine: EngineId; path: string; version: string; ran: number; errors: string[] }[];
+  missing: { engine: EngineId; reason: string }[];
+  warnings: string[];
+}
+
+/** Converts an analyzer signal into a scanner Signal, or explains why it was rejected. */
+function analyzerSignal(m: Extract<AnalyzerMessage, { type: 'signal' }>, engine: EngineId, extPath: string): Signal | string {
+  const info = SIGNALS[m.vector];
+  if (!info) {
+    return `unknown vector ${m.vector}`;
+  }
+  if (!(info.engines as string[]).includes(engine)) {
+    return `${m.vector} is not owned by the ${ENGINE_NAMES[engine]}`;
+  }
+  const located = (m.locations ?? []).map((l) => {
+    const file = isAbsolute(l.file) ? l.file : join(extPath, l.file);
+    const line = Math.max(0, (l.line ?? 1) - 1);
+    const col = Math.max(0, (l.col ?? 1) - 1);
+    return {
+      file,
+      finding: {
+        ruleId: m.vector,
+        severity: info.severity,
+        message: m.message,
+        range: { start: { line, character: col }, end: { line, character: col } },
+        refs: info.refs ?? [],
+        data: m.flow ? { flow: m.flow } : undefined,
+      },
+    };
+  });
+  const confidence = typeof m.confidence === 'number' ? Math.min(1, Math.max(0, m.confidence)) : 1;
+  return signal(m.vector, `${m.message}${m.evidence ? ` (${m.evidence.slice(0, 120)})` : ''}`, located, {
+    weight: confidence < 0.5 ? info.weight / 2 : info.weight,
+  });
+}
+
+export async function scanExtensions(dirs: string[], opts: ScanOptions): Promise<{ results: ExtResult[]; codeRules: Rule[]; coverage: ScanCoverage }> {
   const dataDir = assetDir('extscan');
   const manifestOpts = loadManifestOptions(dataDir, opts.trusted);
   const { rules: codeRules } = loadCodeRules(dataDir);
   const host = treeSitter();
   const engine = new RuleEngine(host, codeRules);
-  const results: ExtResult[] = [];
+  const online = !!opts.online;
+  const coverage: ScanCoverage = { online, ran: new Map(), analyzers: [], missing: [], warnings: [] };
+  for (const v of coreVectors(codeRules, online)) {
+    coverage.ran.set(v, ['ts']);
+  }
+
+  // 1. TypeScript core: manifest + code rules.
+  const exts: ExtInfo[] = [];
+  const signals = new Map<string, Signal[]>();
   const seen = new Set<string>();
   for (const dir of dirs) {
     for (const e of readExtensionsDir(dir)) {
@@ -206,19 +273,83 @@ export async function scanExtensions(dirs: string[], opts: { allowlist: string[]
         continue;
       }
       seen.add(e.path);
+      exts.push(e);
       opts.onProgress?.(e.id);
       const code = await scanExtensionCode(engine, host, e.path, e.packageJSON, { includeNodeModules: opts.includeNodeModules, maxFileSizeMB: 10, maxFiles: opts.maxFiles });
-      const signals = [...manifestSignals(e, manifestOpts), ...code.signals];
-      results.push({
-        ext: { id: e.id, version: e.version, displayName: e.displayName, path: e.path, builtin: e.builtin, source: e.source },
-        risk: scoreExtension(signals, { allowlisted: isAllowlisted(e.id, e.version, opts.allowlist) }),
-      });
+      signals.set(e.path, [...manifestSignals(e, manifestOpts), ...code.signals]);
     }
   }
-  results.sort((a, b) => RANK[b.risk.level] - RANK[a.risk.level] || b.risk.score - a.risk.score || a.ext.id.localeCompare(b.ext.id));
-  return { results, codeRules };
-}
 
+  // 2. Online: Marketplace reputation.
+  if (online && exts.length) {
+    try {
+      const gallery = await lookupMarketplace([...new Set(exts.map((e) => e.id))]);
+      for (const e of exts) {
+        const info = gallery.get(e.id.toLowerCase());
+        if (info) {
+          signals.get(e.path)!.push(...marketplaceSignals(info));
+        }
+      }
+    } catch (err) {
+      coverage.warnings.push(`Marketplace lookup failed: ${(err as Error).message}`);
+      MARKETPLACE_VECTORS.forEach((v) => coverage.ran.delete(v));
+    }
+  }
+
+  // 3. Optional analyzers (Rust / Go / Python / Julia).
+  if (opts.analyzers?.length && exts.length) {
+    const { found, problems } = await discoverAnalyzers(opts.analyzers);
+    coverage.missing.push(...problems);
+    const byId = new Map(exts.map((e) => [e.id.toLowerCase(), e]));
+    for (const a of found) {
+      const wanted = Object.entries(SIGNALS)
+        .filter(([id, s]) => (s.engines as string[]).includes(a.engine) && (online || !s.online) && a.info.vectors.includes(id))
+        .map(([id]) => id);
+      opts.onProgress?.(`${ENGINE_NAMES[a.engine]}…`);
+      const run = await runAnalyzer(
+        a,
+        {
+          protocol: PROTOCOL_VERSION,
+          extensions: exts.map((e) => ({ id: e.id, version: e.version, path: e.path, manifest: e.packageJSON })),
+          vectors: wanted,
+          options: { online, maxFileMB: 10, maxFiles: opts.maxFiles },
+        },
+        opts.analyzerTimeoutMs ?? 10 * 60_000,
+        (m) => m.type === 'progress' && m.ext && opts.onProgress?.(`${a.engine}: ${m.ext}`),
+      );
+      const ranHere = run.ran.filter((v) => wanted.includes(v));
+      for (const v of ranHere) {
+        coverage.ran.set(v, [...(coverage.ran.get(v) ?? []), a.engine]);
+      }
+      const errors = [...run.errors];
+      for (const m of run.messages) {
+        if (m.type !== 'signal') {
+          continue;
+        }
+        const ext = byId.get(m.ext.toLowerCase()) ?? exts.find((e) => e.path === m.ext);
+        if (!ext) {
+          errors.push(`signal for unknown extension ${m.ext}`);
+          continue;
+        }
+        const sig = analyzerSignal(m, a.engine, ext.path);
+        if (typeof sig === 'string') {
+          errors.push(sig);
+        } else {
+          signals.get(ext.path)!.push(sig);
+        }
+      }
+      coverage.analyzers.push({ engine: a.engine, path: a.path, version: a.info.version, ran: ranHere.length, errors: [...new Set(errors)].slice(0, 20) });
+    }
+  }
+
+  // 4. Score.
+  const results: ExtResult[] = exts.map((e) => ({
+    ext: { id: e.id, version: e.version, displayName: e.displayName, path: e.path, builtin: e.builtin, source: e.source },
+    risk: scoreExtension(signals.get(e.path)!, { allowlisted: isAllowlisted(e.id, e.version, opts.allowlist) }),
+  }));
+  results.sort((a, b) => RANK[b.risk.level] - RANK[a.risk.level] || b.risk.score - a.risk.score || a.ext.id.localeCompare(b.ext.id));
+  return { results, codeRules, coverage };
+}
 
 /**
  * Benchmark across all scanned extensions: how many show each risk signal, heaviest first, plus the
@@ -289,6 +420,7 @@ const extensionsCmd: Command = {
     'max-files': { type: 'number', description: 'Maximum JavaScript files scanned per extension', default: 2000 },
     'fail-on': { type: 'string', value: '<high|medium|none>', description: 'Exit 1 when an extension reaches this level', default: 'high' },
     details: { type: 'boolean', description: 'List the reasons for every extension, including low risk (automatic for ≤ 3 extensions)' },
+    ...DEEP_FLAGS,
   },
   examples: ['jest-endpoint extensions', 'jest-endpoint extensions ~/.vscode/extensions/ash-blade.postgresql-hacker-helper-1.18.0   # one extension', 'jest-endpoint extensions ~/.cursor/extensions --format sarif --out ext.sarif', 'jest-endpoint extensions --allowlist ms-python.python --fail-on medium'],
   async run({ positionals, flags }, io) {
@@ -298,11 +430,15 @@ const extensionsCmd: Command = {
       throw new UsageError('--fail-on must be high, medium or none');
     }
     const dirs = positionals.length ? positionals.map((p) => resolve(io.cwd, p)) : defaultExtensionDirs();
-    const { results, codeRules } = await scanExtensions(dirs, {
+    const deepOpts = deepOptions(flags);
+    const { results, codeRules, coverage } = await scanExtensions(dirs, {
       allowlist: (flags.allowlist as string[] | undefined) ?? [],
       trusted: (flags['trusted-publisher'] as string[] | undefined) ?? [],
       includeNodeModules: flags['node-modules'] !== false,
       maxFiles: flags['max-files'] as number,
+      online: deepOpts.online,
+      analyzers: deepOpts.analyzers,
+      analyzerTimeoutMs: deepOpts.analyzerTimeoutMs,
       onProgress: (id) => io.color && io.err(`\rscanning ${id.padEnd(60).slice(0, 60)}`),
     });
     if (io.color) {
@@ -320,7 +456,9 @@ const extensionsCmd: Command = {
               results.filter((r) => !r.ext.builtin),
               dirs.filter((d) => results.some((r) => r.ext.path.startsWith(d))),
               flags.details ? true : undefined,
-            );
+            ) +
+            '\n' +
+            coverageText(coverage, deepOpts.deep);
     emit(io, text, flags.out);
     const limit = fail === 'none' ? Infinity : RANK[fail as 'high' | 'medium'];
     return results.some((r) => RANK[r.risk.level] >= limit) ? 1 : 0;
