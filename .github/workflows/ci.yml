@@ -75,3 +75,24 @@ jobs:
           node packages/cli/dist/jest-security.js analyzers install go --source analyzers/go
           node packages/cli/dist/jest-security.js scan-extension extensions/endpoint-security/test/fixtures/extensions --analyzers go --fail-on none --out - --format json > deep.json
           node -e "const d=require('./deep.json'); const go=d.coverage.analyzers.find(a=>a.engine==='go'); if(!go||go.ran<8||go.errors.length) throw new Error(JSON.stringify(d.coverage.analyzers)); console.log('go analyzer ran', go.ran, 'vectors')"
+
+  python-analyzer:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ['3.9', '3.13']
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: analyzers/python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m unittest discover -s tests -v
+      - name: Installs as a package
+        run: |
+          python -m pip install .
+          jest-ext-py info

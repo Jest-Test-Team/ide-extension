@@ -7,7 +7,7 @@ import { analyzerSearchPath, discoverAnalyzers } from './analyzers/host';
 import { ENGINE_BINARIES, ENGINE_NAMES, type EngineId } from './analyzers/protocol';
 import { SIGNALS } from '../../../extensions/endpoint-security/src/extscan/signals';
 import { analysisText, analyzeExtensions } from './extAnalysis';
-import { existsSync, mkdirSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { HW_TOOL, hwRules } from './hw';
 import { JULIA_TOOL } from './julia';
@@ -261,9 +261,62 @@ async function analyzerStatus(): Promise<string[]> {
 /** Go module of the Go analyzer; `go install` fetches it from the public repository. */
 export const GO_ANALYZER_MODULE = 'github.com/Jest-Test-Team/ide-extension/analyzers/go/cmd/jest-ext-go';
 
+/** pip requirement for the Python analyzer when no local checkout is given. */
+export const PY_ANALYZER_PIP = 'git+https://github.com/Jest-Test-Team/ide-extension.git#subdirectory=analyzers/python';
+
+/**
+ * The Python analyzer uses only the standard library. From a checkout it is copied next to a
+ * launcher (offline); otherwise pip installs it into a private venv in the cache, never into the
+ * user's own Python environment.
+ */
+async function installPythonAnalyzer(source: string | undefined, io: Io): Promise<number> {
+  const python = which('python3') ?? which('python');
+  if (!python) {
+    io.err('The Python analyzer needs Python 3.9+: https://www.python.org/downloads/\n');
+    return 1;
+  }
+  const dest = join(cacheDir('jest-security'), 'analyzers');
+  mkdirSync(dest, { recursive: true });
+  const win = process.platform === 'win32';
+  const launcher = join(dest, win ? 'jest-ext-py.cmd' : 'jest-ext-py');
+  if (source) {
+    const pkg = join(dest, 'py', 'jest_ext_py');
+    rmSync(pkg, { recursive: true, force: true });
+    cpSync(join(resolve(source), 'jest_ext_py'), pkg, { recursive: true });
+    const pyhome = join(dest, 'py');
+    writeFileSync(
+      launcher,
+      win ? `@echo off\r\nset "PYTHONPATH=${pyhome}"\r\n"${python}" -m jest_ext_py %*\r\n` : `#!/bin/sh\nPYTHONPATH='${pyhome}' exec '${python}' -m jest_ext_py "$@"\n`,
+    );
+  } else {
+    const venv = join(dest, 'py-venv');
+    const steps: [string, string[]][] = [
+      [python, ['-m', 'venv', venv]],
+      [join(venv, win ? 'Scripts/python.exe' : 'bin/python'), ['-m', 'pip', 'install', '--upgrade', PY_ANALYZER_PIP]],
+    ];
+    for (const [cmd, args] of steps) {
+      const res = await run(cmd, args, { cwd: dest, io });
+      if (res.code !== 0) {
+        io.err(`${args.join(' ')} failed (exit ${res.code})\n`);
+        return 1;
+      }
+    }
+    const exe = join(venv, win ? 'Scripts/jest-ext-py.exe' : 'bin/jest-ext-py');
+    writeFileSync(launcher, win ? `@echo off\r\n"${exe}" %*\r\n` : `#!/bin/sh\nexec '${exe}' "$@"\n`);
+  }
+  if (!win) {
+    chmodSync(launcher, 0o755);
+  }
+  io.out(`Installed jest-ext-py into ${dest}\n${(await analyzerStatus()).join('\n')}\n`);
+  return 0;
+}
+
 async function installAnalyzer(engine: string, source: string | undefined, io: Io): Promise<number> {
+  if (engine === 'py') {
+    return installPythonAnalyzer(source, io);
+  }
   if (engine !== 'go') {
-    throw new UsageError(`installing the ${engine} analyzer is not supported yet; available: go`);
+    throw new UsageError(`installing the ${engine} analyzer is not supported yet; available: go, py`);
   }
   const go = which('go');
   if (!go) {
@@ -286,12 +339,12 @@ async function installAnalyzer(engine: string, source: string | undefined, io: I
 
 const analyzersCmd: Command = {
   name: 'analyzers',
-  summary: 'Show the optional deep-inspection analyzers (Rust, Go, Python, Julia), or install one: analyzers install go',
-  args: '[install <go>]',
+  summary: 'Show the optional deep-inspection analyzers (Rust, Go, Python, Julia), or install one: analyzers install go|py',
+  args: '[install <go|py>]',
   flags: {
-    source: { type: 'string', value: '<dir>', description: 'With install: build from this checkout of analyzers/go instead of fetching it' },
+    source: { type: 'string', value: '<dir>', description: 'With install: use this checkout (analyzers/go or analyzers/python) instead of fetching it' },
   },
-  examples: ['jest-security analyzers', 'jest-security analyzers install go', 'jest-security analyzers install go --source ./analyzers/go'],
+  examples: ['jest-security analyzers', 'jest-security analyzers install go', 'jest-security analyzers install py', 'jest-security analyzers install go --source ./analyzers/go'],
   async run(args, io) {
     const [sub, engine] = args.positionals;
     if (sub === 'install') {

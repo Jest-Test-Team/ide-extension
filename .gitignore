@@ -12,3 +12,6 @@ security.sarif
 
 # Sample extensions used by tests keep their compiled code in out/.
 !**/test/fixtures/**/out/
+__pycache__/
+*.pyc
+*.egg-info/
