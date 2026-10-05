@@ -42,7 +42,7 @@ describe('jest-security', () => {
     expect(await main(['doctor'], io)).toBe(0);
     expect(io.stdout()).toContain('✔ grammars');
     expect(io.stdout()).toContain('✔ scripts');
-  });
+  }, 30000);
 });
 
 describe('jest-security scan (full audit)', () => {

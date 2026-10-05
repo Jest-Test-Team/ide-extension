@@ -20,7 +20,7 @@ describe('jest-julia', () => {
     // The recorded profile uses /work/InvDemo paths; point them at a copy of the fixture there.
     const dir = mkdtempSync(join(tmpdir(), 'cli-jl-'));
     cpSync(join(FX, 'InvDemo'), join(dir, 'InvDemo'), { recursive: true });
-    const profile = readFileSync(join(FX, 'invdemo.profile.json'), 'utf8').split('/work/InvDemo').join(join(dir, 'InvDemo'));
+    const profile = readFileSync(join(FX, 'invdemo.profile.json'), 'utf8').split('/work/InvDemo').join(JSON.stringify(join(dir, 'InvDemo')).slice(1, -1));
     writeFileSync(join(dir, 'p.json'), profile);
     const io = captureIo(dir);
     await main(['lint', 'InvDemo', '--profile', 'p.json', '--format', 'json'], io);
