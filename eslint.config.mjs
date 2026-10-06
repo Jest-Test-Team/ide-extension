@@ -10,4 +10,9 @@ export default tseslint.config(
       eqeqeq: 'warn',
     },
   },
+  {
+    // Runtime-audit helpers are plain CommonJS that run inside the audited process.
+    files: ['packages/cli/runtime/**/*.cjs'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
 );

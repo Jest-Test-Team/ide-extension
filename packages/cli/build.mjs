@@ -48,6 +48,7 @@ const data = {
   ptree: 'extensions/endpoint-security/data/ptree',
   extscan: 'extensions/endpoint-security/data/extscan',
   scripts: 'extensions/julia-profiler/scripts',
+  runtime: 'packages/cli/runtime',
 };
 for (const [to, from] of Object.entries(data)) {
   cpSync(join(repo, from), join(dist, to), { recursive: true });

@@ -2718,5 +2718,147 @@ export const VECTOR_DEFS: readonly VectorDef[] = [
     "attack": [],
     "cwe": [],
     "doc": []
+  },
+  {
+    "id": "runtime/child-process-spawned",
+    "category": "runtime",
+    "engines": [
+      "rt"
+    ],
+    "weight": 2,
+    "severity": "warning",
+    "online": false,
+    "title": "Started a process while running",
+    "description": "child_process spawn / exec / execFile / fork observed with its command line; shells, downloaders and script hosts (curl, wget, bash -c, powershell, cmd.exe, nc) weigh much more.",
+    "attack": [
+      "T1059"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "runtime/fs-access-violation",
+    "category": "runtime",
+    "engines": [
+      "rt"
+    ],
+    "weight": 3,
+    "severity": "warning",
+    "online": false,
+    "title": "Touched files outside its own folder and the workspace",
+    "description": "Reads, writes or directory listings outside the extension, the workspace and temporary folders; reading the decoy SSH key, cloud credentials or shell profile planted in the audit's home folder is a strong signal.",
+    "attack": [
+      "T1005",
+      "T1552.001"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "runtime/dynamic-eval-execution",
+    "category": "runtime",
+    "engines": [
+      "rt"
+    ],
+    "weight": 2,
+    "severity": "warning",
+    "online": false,
+    "title": "Evaluated code built at run time",
+    "description": "eval, the Function constructor or vm.* received code while running; the captured source is matched against loader, process and network patterns.",
+    "attack": [
+      "T1027",
+      "T1059.007"
+    ],
+    "cwe": [
+      "95"
+    ],
+    "doc": []
+  },
+  {
+    "id": "runtime/dns-and-http-destinations",
+    "category": "runtime",
+    "engines": [
+      "rt"
+    ],
+    "weight": 2,
+    "severity": "warning",
+    "online": false,
+    "title": "Contacted network destinations",
+    "description": "DNS lookups, HTTP(S) requests and socket connections with host, port and payload size; IP literals, dynamic-DNS hosts, hosts not named in the manifest, large uploads, or decoy secrets in a request body weigh more.",
+    "attack": [
+      "T1071",
+      "T1041"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "runtime/clipboard-poll-frequency",
+    "category": "runtime",
+    "engines": [
+      "rt"
+    ],
+    "weight": 3,
+    "severity": "warning",
+    "online": false,
+    "title": "Read the clipboard without user action",
+    "description": "env.clipboard.readText calls while nobody used the editor; more than one per minute looks like a clipboard / token logger.",
+    "attack": [
+      "T1115"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "runtime/orphan-process-daemon",
+    "category": "runtime",
+    "engines": [
+      "rt"
+    ],
+    "weight": 6,
+    "severity": "error",
+    "online": false,
+    "title": "Left a process running after exit",
+    "description": "A process the extension started was still alive after the extension host exited (re-parented to init / launchd): a persistent daemon.",
+    "attack": [
+      "T1543"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "runtime/network-raw-socket",
+    "category": "runtime",
+    "engines": [
+      "rt"
+    ],
+    "weight": 3,
+    "severity": "warning",
+    "online": false,
+    "title": "Raw or non-HTTP network traffic",
+    "description": "UDP sockets or TCP connections to non-web ports from JavaScript, and (Linux, root + bpftrace) raw SOCK_RAW sockets from native code.",
+    "attack": [
+      "T1095"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "runtime/mprotect-rwx",
+    "category": "runtime",
+    "engines": [
+      "rt"
+    ],
+    "weight": 5,
+    "severity": "error",
+    "online": false,
+    "title": "Writable and executable memory beyond the JIT baseline",
+    "description": "mprotect / mmap with PROT_WRITE|PROT_EXEC above what an empty extension host produces (Linux, root + bpftrace): in-memory shellcode or injection.",
+    "attack": [
+      "T1055",
+      "T1620"
+    ],
+    "cwe": [],
+    "doc": []
   }
 ];

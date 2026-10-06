@@ -9,8 +9,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = join(root, 'data', 'extscan', 'vectors.yaml');
 const out = join(root, 'src', 'extscan', 'vectors.generated.ts');
 
-const CATEGORIES = ['manifest', 'process', 'data', 'network', 'obfuscation', 'native', 'supply-chain', 'webview', 'vscode-api', 'scripts', 'reputation', 'model', 'meta'];
-const ENGINES = ['ts', 'rs', 'go', 'py', 'jl'];
+const CATEGORIES = ['manifest', 'process', 'data', 'network', 'obfuscation', 'native', 'supply-chain', 'webview', 'vscode-api', 'scripts', 'reputation', 'model', 'meta', 'runtime'];
+const ENGINES = ['ts', 'rs', 'go', 'py', 'jl', 'rt'];
 const SEVERITIES = ['error', 'warning', 'info', 'hint'];
 const DOCS = ['activation', 'trust', 'ext-security', 'removed'];
 
@@ -22,7 +22,7 @@ export function generate(yamlText) {
   const seen = new Set();
   const vectors = doc.vectors.map((v, i) => {
     const where = `vectors[${i}] (${v.id})`;
-    if (!/^ext\/[a-z0-9-]+$/.test(v.id ?? '')) {throw new Error(`${where}: bad id`);}
+    if (!/^(ext|runtime)\/[a-z0-9-]+$/.test(v.id ?? '')) {throw new Error(`${where}: bad id`);}
     if (seen.has(v.id)) {throw new Error(`${where}: duplicate id`);}
     seen.add(v.id);
     if (!CATEGORIES.includes(v.category)) {throw new Error(`${where}: unknown category ${v.category}`);}

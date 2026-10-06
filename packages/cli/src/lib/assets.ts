@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { GRAMMAR_FILES } from '@ide-ext/core';
 
 /** Runtime data the CLIs need; each lives in a folder of that name next to (or above) the bundle. */
-export type AssetKind = 'grammars' | 'rules' | 'ptree' | 'extscan' | 'scripts';
+export type AssetKind = 'grammars' | 'rules' | 'ptree' | 'extscan' | 'scripts' | 'runtime';
 
 // When running from source (tests, ts-node) the data still lives in the extension folders.
 const REPO = resolve(__dirname, '..', '..', '..', '..');
@@ -13,6 +13,7 @@ const SOURCE: Record<Exclude<AssetKind, 'grammars'>, string> = {
   ptree: join(REPO, 'extensions/endpoint-security/data/ptree'),
   extscan: join(REPO, 'extensions/endpoint-security/data/extscan'),
   scripts: join(REPO, 'extensions/julia-profiler/scripts'),
+  runtime: join(REPO, 'packages/cli/runtime'),
 };
 
 const PROBE: Record<AssetKind, string> = {
@@ -21,6 +22,7 @@ const PROBE: Record<AssetKind, string> = {
   ptree: 'default-rules.yaml',
   extscan: 'popular-extensions.json',
   scripts: 'collect.jl',
+  runtime: 'audit-agent.cjs',
 };
 
 export function assetDir(kind: AssetKind): string {

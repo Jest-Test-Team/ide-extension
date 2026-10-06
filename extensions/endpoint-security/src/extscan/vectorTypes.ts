@@ -13,10 +13,14 @@ export type VectorCategory =
   | 'scripts'
   | 'reputation'
   | 'model'
-  | 'meta';
+  | 'meta'
+  | 'runtime';
 
-/** Engines that can implement a vector: TypeScript core or one of the optional analyzers. */
-export type Engine = 'ts' | 'rs' | 'go' | 'py' | 'jl';
+/**
+ * Engines that can implement a vector: TypeScript core, one of the optional analyzers, or `rt`, the
+ * runtime audit (`jest-security audit-extension`), which runs the extension.
+ */
+export type Engine = 'ts' | 'rs' | 'go' | 'py' | 'jl' | 'rt';
 
 /** One entry of data/extscan/vectors.yaml. */
 export interface VectorDef {
@@ -51,4 +55,5 @@ export const CATEGORY_TITLES: Record<VectorCategory, string> = {
   reputation: 'Reputation & provenance',
   model: 'Behavioural model & benchmark',
   meta: 'Scan coverage',
+  runtime: 'Runtime evidence (audit-extension)',
 };

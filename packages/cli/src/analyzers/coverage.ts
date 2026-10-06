@@ -18,7 +18,7 @@ function skipReason(id: string, cov: ScanCoverage): string {
   if (s.online && !cov.online) {
     return 'needs --online';
   }
-  const engines = (s.engines as string[]).filter((e) => e !== 'ts') as EngineId[];
+  const engines = (s.engines as string[]).filter((e) => e !== 'ts' && e !== 'rt') as EngineId[];
   const installed = new Set(cov.analyzers.map((a) => a.engine));
   const usable = engines.filter((e) => installed.has(e));
   if (!usable.length) {
@@ -27,9 +27,12 @@ function skipReason(id: string, cov: ScanCoverage): string {
   return `not implemented by installed ${usable.map((e) => ENGINE_BINARIES[e]).join(', ')} yet`;
 }
 
+/** Static vectors: everything except the runtime evidence that only `audit-extension` produces. */
+export const STATIC_SIGNALS = Object.fromEntries(Object.entries(SIGNALS).filter(([, s]) => s.category !== 'runtime'));
+
 export function categoryCoverage(cov: ScanCoverage): CategoryCoverage[] {
   const out = new Map<VectorCategory, CategoryCoverage>();
-  for (const [id, s] of Object.entries(SIGNALS)) {
+  for (const [id, s] of Object.entries(STATIC_SIGNALS)) {
     const c = out.get(s.category) ?? { category: s.category, title: CATEGORY_TITLES[s.category], total: 0, ran: 0, skipped: {} };
     c.total++;
     if (cov.ran.has(id)) {
@@ -46,7 +49,7 @@ export function categoryCoverage(cov: ScanCoverage): CategoryCoverage[] {
 }
 
 export function coverageSummary(cov: ScanCoverage): string {
-  const total = Object.keys(SIGNALS).length;
+  const total = Object.keys(STATIC_SIGNALS).length;
   const engines = ['TypeScript core', ...cov.analyzers.map((a) => `${ENGINE_NAMES[a.engine]} ${a.version}`)];
   return `Coverage: ${cov.ran.size}/${total} vectors ran (${engines.join(', ')})${cov.online ? ', online checks on' : ''}.`;
 }
