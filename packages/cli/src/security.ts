@@ -8,6 +8,7 @@ import { ENGINE_BINARIES, ENGINE_NAMES, type EngineId } from './analyzers/protoc
 import { SIGNALS } from '../../../extensions/endpoint-security/src/extscan/signals';
 import { analysisText, analyzeExtensions } from './extAnalysis';
 import { chmodSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { HW_TOOL, hwRules } from './hw';
 import { JULIA_TOOL } from './julia';
@@ -311,12 +312,50 @@ async function installPythonAnalyzer(source: string | undefined, io: Io): Promis
   return 0;
 }
 
+/** Builds the Rust analyzer with cargo (release profile) and copies it into the analyzer cache. */
+async function installRustAnalyzer(source: string | undefined, io: Io): Promise<number> {
+  const cargo = which('cargo') ?? [join(homedir(), '.cargo', 'bin', process.platform === 'win32' ? 'cargo.exe' : 'cargo')].find(existsSync);
+  if (!cargo) {
+    io.err('The Rust analyzer is built from source and needs Rust (cargo): https://rustup.rs\n');
+    return 1;
+  }
+  const dest = join(cacheDir('jest-security'), 'analyzers');
+  mkdirSync(dest, { recursive: true });
+  const exe = process.platform === 'win32' ? '.exe' : '';
+  let built: string;
+  if (source) {
+    const res = await run(cargo, ['build', '--release', '--locked'], { cwd: resolve(source), io });
+    if (res.code !== 0) {
+      io.err(`cargo build failed (exit ${res.code})\n`);
+      return 1;
+    }
+    built = join(resolve(source), 'target', 'release', `jest-ext-rs${exe}`);
+  } else {
+    const root = join(dest, 'rs');
+    const res = await run(cargo, ['install', '--locked', '--git', RS_ANALYZER_GIT, '--root', root, 'jest-ext-rs'], { cwd: dest, io });
+    if (res.code !== 0) {
+      io.err(`cargo install failed (exit ${res.code})\n`);
+      return 1;
+    }
+    built = join(root, 'bin', `jest-ext-rs${exe}`);
+  }
+  cpSync(built, join(dest, `jest-ext-rs${exe}`));
+  io.out(`Installed jest-ext-rs into ${dest}\n${(await analyzerStatus()).join('\n')}\n`);
+  return 0;
+}
+
+/** Git repository cargo installs the Rust analyzer from. */
+export const RS_ANALYZER_GIT = 'https://github.com/Jest-Test-Team/ide-extension.git';
+
 async function installAnalyzer(engine: string, source: string | undefined, io: Io): Promise<number> {
   if (engine === 'py') {
     return installPythonAnalyzer(source, io);
   }
+  if (engine === 'rs') {
+    return installRustAnalyzer(source, io);
+  }
   if (engine !== 'go') {
-    throw new UsageError(`installing the ${engine} analyzer is not supported yet; available: go, py`);
+    throw new UsageError(`installing the ${engine} analyzer is not supported yet; available: rs, go, py`);
   }
   const go = which('go');
   if (!go) {
@@ -339,10 +378,10 @@ async function installAnalyzer(engine: string, source: string | undefined, io: I
 
 const analyzersCmd: Command = {
   name: 'analyzers',
-  summary: 'Show the optional deep-inspection analyzers (Rust, Go, Python, Julia), or install one: analyzers install go|py',
-  args: '[install <go|py>]',
+  summary: 'Show the optional deep-inspection analyzers (Rust, Go, Python, Julia), or install one: analyzers install rs|go|py',
+  args: '[install <rs|go|py>]',
   flags: {
-    source: { type: 'string', value: '<dir>', description: 'With install: use this checkout (analyzers/go or analyzers/python) instead of fetching it' },
+    source: { type: 'string', value: '<dir>', description: 'With install: use this checkout (analyzers/rust, analyzers/go or analyzers/python) instead of fetching it' },
   },
   examples: ['jest-security analyzers', 'jest-security analyzers install go', 'jest-security analyzers install py', 'jest-security analyzers install go --source ./analyzers/go'],
   async run(args, io) {

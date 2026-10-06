@@ -16,3 +16,4 @@ __pycache__/
 *.pyc
 *.egg-info/
 /analyzers/rust/target/debug
+analyzers/rust/target/

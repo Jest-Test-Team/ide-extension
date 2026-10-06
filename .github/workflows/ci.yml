@@ -98,3 +98,38 @@ jobs:
         run: |
           python -m pip install .
           jest-ext-py info
+
+  rust-analyzer:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: analyzers/rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: analyzers/rust
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
+      - uses: actions/setup-node@v4
+        if: runner.os == 'Linux'
+        with:
+          node-version: 22
+          cache: npm
+      - name: CLI drives the Rust analyzer
+        if: runner.os == 'Linux'
+        working-directory: .
+        run: |
+          npm ci
+          npm run build -w @jest-test-team/security-cli
+          node packages/cli/dist/jest-security.js analyzers install rs --source analyzers/rust
+          node packages/cli/dist/jest-security.js scan-extension extensions/endpoint-security/test/fixtures/extensions --analyzers rs --fail-on none --out - --format json > deep.json
+          node -e "const d=require('./deep.json'); const rs=d.coverage.analyzers.find(a=>a.engine==='rs'); if(!rs||rs.ran<22||rs.errors.length) throw new Error(JSON.stringify(d.coverage.analyzers)); console.log('rust analyzer ran', rs.ran, 'vectors')"
