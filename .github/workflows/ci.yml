@@ -133,3 +133,19 @@ jobs:
           node packages/cli/dist/jest-security.js analyzers install rs --source analyzers/rust
           node packages/cli/dist/jest-security.js scan-extension extensions/endpoint-security/test/fixtures/extensions --analyzers rs --fail-on none --out - --format json > deep.json
           node -e "const d=require('./deep.json'); const rs=d.coverage.analyzers.find(a=>a.engine==='rs'); if(!rs||rs.ran<22||rs.errors.length) throw new Error(JSON.stringify(d.coverage.analyzers)); console.log('rust analyzer ran', rs.ran, 'vectors')"
+
+  julia-analyzer:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v2
+      - name: Test
+        working-directory: analyzers/julia
+        run: julia --startup-file=no --project=. -e "using Pkg; Pkg.instantiate(); Pkg.test()"

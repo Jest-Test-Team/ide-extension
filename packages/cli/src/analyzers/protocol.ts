@@ -42,6 +42,8 @@ export interface RequestExtension {
   /** Absolute install folder. */
   path: string;
   manifest: Record<string, unknown>;
+  /** Category scores from every earlier engine; sent only to the Julia analyzer, which runs last. */
+  categoryScores?: Record<string, number>;
 }
 
 export interface AnalyzeRequest {

@@ -17,3 +17,4 @@ __pycache__/
 *.egg-info/
 /analyzers/rust/target/debug
 analyzers/rust/target/
+analyzers/julia/Manifest.toml

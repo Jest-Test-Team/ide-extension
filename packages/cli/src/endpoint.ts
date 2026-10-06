@@ -303,6 +303,8 @@ export async function scanExtensions(dirs: string[], opts: ScanOptions): Promise
     const { found, problems } = await discoverAnalyzers(opts.analyzers);
     coverage.missing.push(...problems);
     const byId = new Map(exts.map((e) => [e.id.toLowerCase(), e]));
+    // The Julia analyzer compares extensions with each other, so it runs last and gets the scores.
+    found.sort((x, y) => Number(x.engine === 'jl') - Number(y.engine === 'jl'));
     for (const a of found) {
       const wanted = Object.entries(SIGNALS)
         .filter(([id, s]) => (s.engines as string[]).includes(a.engine) && (online || !s.online) && a.info.vectors.includes(id))
@@ -312,7 +314,13 @@ export async function scanExtensions(dirs: string[], opts: ScanOptions): Promise
         a,
         {
           protocol: PROTOCOL_VERSION,
-          extensions: exts.map((e) => ({ id: e.id, version: e.version, path: e.path, manifest: e.packageJSON })),
+          extensions: exts.map((e) => ({
+            id: e.id,
+            version: e.version,
+            path: e.path,
+            manifest: e.packageJSON,
+            ...(a.engine === 'jl' ? { categoryScores: Object.fromEntries(scoreExtension(signals.get(e.path)!).categories.map((c) => [c.category, c.score])) } : {}),
+          })),
           vectors: wanted,
           options: { online, maxFileMB: 10, maxFiles: opts.maxFiles },
         },

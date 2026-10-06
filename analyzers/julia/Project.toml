@@ -1,0 +1,17 @@
+name = "JestExtBenchmark"
+uuid = "c080491a-4cc6-4111-8638-9e45c2ea2544"
+version = "0.1.0"
+authors = ["Jest-Test-Team"]
+
+[deps]
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+
+[compat]
+JSON = "0.21, 1"
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

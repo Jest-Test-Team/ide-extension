@@ -347,7 +347,53 @@ async function installRustAnalyzer(source: string | undefined, io: Io): Promise<
 /** Git repository cargo installs the Rust analyzer from. */
 export const RS_ANALYZER_GIT = 'https://github.com/Jest-Test-Team/ide-extension.git';
 
+/**
+ * The Julia analyzer runs in its own project environment in the cache: copied from a checkout, or
+ * added with Pkg from the repository (`subdir = analyzers/julia`).
+ */
+async function installJuliaAnalyzer(source: string | undefined, io: Io): Promise<number> {
+  const win = process.platform === 'win32';
+  const julia = which('julia') ?? [join(homedir(), '.juliaup', 'bin', win ? 'julia.exe' : 'julia')].find(existsSync);
+  if (!julia) {
+    io.err('The Julia analyzer needs Julia 1.10+: https://julialang.org/install/\n');
+    return 1;
+  }
+  const dest = join(cacheDir('jest-security'), 'analyzers');
+  const project = join(dest, 'jl');
+  rmSync(project, { recursive: true, force: true });
+  mkdirSync(project, { recursive: true });
+  let setup: string;
+  if (source) {
+    cpSync(join(resolve(source), 'Project.toml'), join(project, 'Project.toml'));
+    cpSync(join(resolve(source), 'src'), join(project, 'src'), { recursive: true });
+    setup = 'using Pkg; Pkg.instantiate(); using JestExtBenchmark';
+  } else {
+    setup = `using Pkg; Pkg.add(url=${JSON.stringify(RS_ANALYZER_GIT)}, subdir="analyzers/julia"); using JestExtBenchmark`;
+  }
+  const res = await run(julia, ['--startup-file=no', `--project=${project}`, '-e', setup], { cwd: dest, io });
+  if (res.code !== 0) {
+    io.err(`julia setup failed (exit ${res.code})\n`);
+    return 1;
+  }
+  const code = 'using JestExtBenchmark; exit(JestExtBenchmark.main(ARGS))';
+  const launcher = join(dest, win ? 'jest-ext-jl.cmd' : 'jest-ext-jl');
+  writeFileSync(
+    launcher,
+    win
+      ? `@echo off\r\n"${julia}" --startup-file=no --history-file=no "--project=${project}" -e "${code}" -- %*\r\n`
+      : `#!/bin/sh\nexec '${julia}' --startup-file=no --history-file=no '--project=${project}' -e '${code}' -- "$@"\n`,
+  );
+  if (!win) {
+    chmodSync(launcher, 0o755);
+  }
+  io.out(`Installed jest-ext-jl into ${dest}\n${(await analyzerStatus()).join('\n')}\n`);
+  return 0;
+}
+
 async function installAnalyzer(engine: string, source: string | undefined, io: Io): Promise<number> {
+  if (engine === 'jl') {
+    return installJuliaAnalyzer(source, io);
+  }
   if (engine === 'py') {
     return installPythonAnalyzer(source, io);
   }
@@ -355,7 +401,7 @@ async function installAnalyzer(engine: string, source: string | undefined, io: I
     return installRustAnalyzer(source, io);
   }
   if (engine !== 'go') {
-    throw new UsageError(`installing the ${engine} analyzer is not supported yet; available: rs, go, py`);
+    throw new UsageError(`installing the ${engine} analyzer is not supported; available: rs, go, py, jl`);
   }
   const go = which('go');
   if (!go) {
@@ -378,10 +424,10 @@ async function installAnalyzer(engine: string, source: string | undefined, io: I
 
 const analyzersCmd: Command = {
   name: 'analyzers',
-  summary: 'Show the optional deep-inspection analyzers (Rust, Go, Python, Julia), or install one: analyzers install rs|go|py',
-  args: '[install <rs|go|py>]',
+  summary: 'Show the optional deep-inspection analyzers (Rust, Go, Python, Julia), or install one: analyzers install rs|go|py|jl',
+  args: '[install <rs|go|py|jl>]',
   flags: {
-    source: { type: 'string', value: '<dir>', description: 'With install: use this checkout (analyzers/rust, analyzers/go or analyzers/python) instead of fetching it' },
+    source: { type: 'string', value: '<dir>', description: 'With install: use this checkout (analyzers/rust, analyzers/go, analyzers/python or analyzers/julia) instead of fetching it' },
   },
   examples: ['jest-security analyzers', 'jest-security analyzers install go', 'jest-security analyzers install py', 'jest-security analyzers install go --source ./analyzers/go'],
   async run(args, io) {

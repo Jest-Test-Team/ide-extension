@@ -1,0 +1,5 @@
+#!/bin/sh
+# Launcher installed by `jest-security analyzers install jl`; JEST_EXT_JL_PROJECT points at the project.
+here=$(cd "$(dirname "$0")" && pwd)
+project=${JEST_EXT_JL_PROJECT:-$here/..}
+exec julia --startup-file=no --history-file=no --project="$project" -e 'using JestExtBenchmark; exit(JestExtBenchmark.main(ARGS))' -- "$@"
