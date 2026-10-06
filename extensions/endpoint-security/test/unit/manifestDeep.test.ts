@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { ExtInfo, ManifestOptions } from '../../src/extscan/manifest';
-import { combinedSignals, DEEP_MANIFEST_VECTORS, deepManifestSignals, unusualEntry } from '../../src/extscan/manifestDeep';
+import { combinedSignals, declaresTelemetry, DEEP_MANIFEST_VECTORS, deepManifestSignals, unusualEntry, withoutDeclared } from '../../src/extscan/manifestDeep';
 import { signal } from '../../src/extscan/signals';
 
 const opts: ManifestOptions = { trustedPublishers: new Set(['microsoft', 'ms-python']), popular: ['ms-python.python', 'esbenp.prettier-vscode'], knownBad: new Map() };
@@ -76,5 +76,17 @@ describe('deep manifest vectors', () => {
     expect(unusualEntry('./node_modules/x/index.js')).toMatch(/node_modules/);
     expect(unusualEntry('./out/k3j9x2m8q7z1.js')).toMatch(/random/);
     expect(unusualEntry('./assets/img/run.js')).toMatch(/outside/);
+  });
+
+  it('drops third-party tracking when the extension declares telemetry', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tele-'));
+    const ext = (pkg: Record<string, unknown>): ExtInfo => ({ id: 'a.b', version: '1.0.0', path: dir, packageJSON: pkg, builtin: false });
+    const sigs = [signal('ext/telemetry-unauthorized', 'mixpanel'), signal('ext/network-outbound', 'https')];
+    expect(withoutDeclared(ext({}), sigs).map((x) => x.id)).toEqual(['ext/telemetry-unauthorized', 'ext/network-outbound']);
+    const tagged = { contributes: { configuration: { properties: { 'b.telemetry': { type: 'boolean', tags: ['telemetry'] } } } } };
+    expect(declaresTelemetry(ext(tagged))).toBe(true);
+    expect(declaresTelemetry(ext({ dependencies: { '@vscode/extension-telemetry': '^1' } }))).toBe(true);
+    writeFileSync(join(dir, 'telemetry.json'), '{}');
+    expect(withoutDeclared(ext({}), sigs).map((x) => x.id)).toEqual(['ext/network-outbound']);
   });
 });

@@ -608,3 +608,98 @@ rules:
     message: '`{{match}}` downloads or decodes commands.'
     flags: i
     pattern: '\b(?:IEX|Invoke-Expression)\b|\s-(?:enc|EncodedCommand)\s+[A-Za-z0-9+/=]{20,}|\bbitsadmin\b[^\n]{0,80}/transfer|\.Download(?:String|File)\s*\(|\bcertutil\b[^\n]{0,40}-urlcache'
+
+  # ---- Supply-chain / exfiltration / API-abuse benchmark additions ----
+
+  - id: ext/network-outbound.module
+    kind: pattern
+    title: 'Network module'
+    severity: info
+    languages: [javascript]
+    message: 'Loads `{{match}}`: can connect to other machines.'
+    pattern: '(?:require\s*\(\s*|from\s*|import\s*\(\s*)[''"](?:node:)?(?:https?|http2|net|tls|dgram|ws|axios|node-fetch|undici|got|needle|superagent|request|socket\.io-client)[''"]'
+
+  - id: ext/network-outbound.fetch
+    kind: pattern
+    title: 'fetch / WebSocket'
+    severity: info
+    languages: [javascript]
+    message: '`{{match}}` opens a network connection.'
+    pattern: '(?<![.\w$])fetch\s*\(|\bnew\s+WebSocket\s*\('
+
+  - id: ext/hardcoded-ip-or-raw-url.dyndns
+    kind: pattern
+    title: 'Dynamic-DNS or tunnel host'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` is a dynamic-DNS / tunnel host.'
+    flags: i
+    pattern: '//(?:[\w-]+\.)*(?:duckdns\.org|no-ip\.(?:com|org|biz|info)|noip\.me|ddns\.net|dynu\.(?:com|net)|afraid\.org|hopto\.org|zapto\.org|sytes\.net|serveftp\.com|myftp\.(?:biz|org)|servehttp\.com|dyndns\.org|dynalias\.com|serveo\.net|loca\.lt|localtunnel\.me|portmap\.io|bore\.pub|pagekite\.me)\b'
+
+  - id: ext/hardcoded-ip-or-raw-url.port
+    kind: pattern
+    title: 'URL on a non-standard port'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` points at a server on a non-standard port.'
+    pattern: '[''"`](?:https?|wss?)://(?!localhost|127\.|0\.0\.0\.0|\[|10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)(?:[\w-]+\.)+[a-zA-Z]{2,}:(?!(?:80|443|8080|8443)\b)\d{2,5}\b'
+
+  - id: ext/telemetry-unauthorized.sdk
+    kind: pattern
+    title: 'Third-party tracking SDK'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` sends usage data to a third-party tracker.'
+    flags: i
+    unless: 'isTelemetryEnabled|onDidChangeTelemetryEnabled|telemetryLevel|@vscode/extension-telemetry|vscode-extension-telemetry'
+    pattern: 'google-analytics\.com/(?:g/|mp/)?collect|googletagmanager\.com/gtag|api(?:-js)?\.mixpanel\.com|api\.segment\.io|cdn\.segment\.com|api2?\.amplitude\.com|(?:us|eu|app)\.(?:i\.)?posthog\.com|heapanalytics\.com|static\.hotjar\.com|[''"](?:mixpanel|analytics-node|@segment/analytics-node|universal-analytics|posthog-node|amplitude-js|@amplitude/analytics-node)[''"]'
+
+  - id: ext/sensitive-dotfiles.path
+    kind: pattern
+    title: 'Developer secret dotfile'
+    severity: warning
+    languages: [javascript]
+    message: 'References the developer secret file `{{match}}`.'
+    pattern: '[''"/\\]\.gnupg\b|[''"/\\]\.gitconfig[''"]|\.ssh[/\\]{1,2}config\b|\.config[/\\]{1,2}gh[/\\]{1,2}hosts\.yml|[''"/\\]\.pgpass[''"]|[''"/\\]\.my\.cnf[''"]|\.config[/\\]{1,2}hub[''"]'
+
+  - id: ext/workspace-secret-harvest.glob
+    kind: pattern
+    title: 'Glob for key / credential files'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` searches for key or credential files.'
+    pattern: '[''"`][^''"`\n]{0,60}(?:\*\.(?:pem|key|p12|pfx|keystore|jks|ppk)|\*\.\{[^}''"`]*(?:pem|key|p12)[^}''"`]*\}|(?:\*\*/|\*)(?:id_rsa|id_ed25519|credentials\.json|secrets?\.ya?ml|service[-_]account[^''"`]*\.json))'
+
+  - id: ext/terminal-injection.create-send
+    kind: pattern
+    title: 'Creates a terminal and types into it'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` creates a terminal and immediately types a command.'
+    pattern: 'createTerminal\s*\([^()]{0,200}\)\s*\.sendText\s*\('
+
+  - id: ext/command-override.register
+    kind: pattern
+    title: 'Registers a built-in command id'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` takes over a built-in command.'
+    pattern: 'register(?:TextEditor)?Command\s*\(\s*[''"`](?:type|default:type|paste|cut|copy|workbench\.action\.terminal\.[\w.]+|git\.(?:commit|push|pushTo|sync)\w*|editor\.action\.clipboard\w+|workbench\.action\.files\.save\w*|workbench\.action\.quickOpen)[''"`]'
+
+  - id: ext/debug-session-hook.api
+    kind: pattern
+    title: 'Debug-session hook'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` observes debug sessions.'
+    pattern: 'registerDebugAdapterTrackerFactory\s*\(\s*[''"`]\*[''"`]|\bonDidStartDebugSession\b|\bonDidReceiveDebugSessionCustomEvent\b|customRequest\s*\(\s*[''"`](?:evaluate|readMemory|variables)[''"`]'
+
+  - id: ext/webview-remote-content.remote
+    kind: pattern
+    title: 'Remote content in a script-enabled webview'
+    severity: warning
+    languages: [javascript]
+    message: '`{{match}}` in a bundle that enables webview scripts.'
+    flags: i
+    when: '\benableScripts\s*:\s*(?:true|!0)\b'
+    pattern: '<script[^>]{0,200}\ssrc\s*=\s*\\?[''"]https?://[^''"\\\s>]+|<iframe[^>]{0,200}\ssrc\s*=\s*\\?[''"]https?://[^''"\\\s>]+|frame-src[^;"]{0,200}?\shttps?://[\w.-]+'

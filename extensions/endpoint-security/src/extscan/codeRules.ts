@@ -132,4 +132,86 @@ export const encodedBlob: CustomRule = {
   },
 };
 
-export const EXTSCAN_CUSTOM_RULES: CustomRule[] = [obfuscatorMarkers, packedPayload, encodedBlob];
+/** Literals without whitespace, long enough for entropy to mean something. */
+const LONG_LITERAL = /(['"`])([^'"`\s\\]{128,})\1/g;
+/** Embedded images, fonts and wasm: legitimately random-looking. */
+const KNOWN_BLOB_PREFIXES = ['iVBOR', 'R0lGOD', '/9j/', 'AGFzbQ', 'd09GR', 'T1RUTw', 'AAEAAA', 'PHN2Zy', 'data:', 'sha256-', 'sha384-', 'sha512-'];
+export const HIGH_ENTROPY = 5.8;
+
+/** Literals with Shannon entropy above 5.8 bits/char: compressed, encrypted or encoded payloads. */
+export const highEntropyString: CustomRule = {
+  kind: 'custom',
+  id: 'ext/high-entropy-string.literal',
+  title: 'High-entropy literal',
+  severity: 'info',
+  languages: ['javascript'],
+  message: '{{count}} literal(s) above {{threshold}} bits/char, the first {{length}} characters at {{entropy}}.',
+  refs: [OBF_REF],
+  check(ctx: RuleContext): Finding[] {
+    let first: { start: number; length: number; entropy: number } | undefined;
+    let count = 0;
+    for (const m of ctx.text.matchAll(LONG_LITERAL)) {
+      if (KNOWN_BLOB_PREFIXES.some((p) => m[2].startsWith(p))) {
+        continue;
+      }
+      const entropy = shannonEntropy(m[2]);
+      if (entropy <= HIGH_ENTROPY) {
+        continue;
+      }
+      count++;
+      first ??= { start: m.index ?? 0, length: m[2].length, entropy };
+    }
+    if (!first) {
+      return [];
+    }
+    return [
+      ctx.report(ctx.lines.rangeOf(first.start, first.start + Math.min(first.length, 80)), undefined, {
+        count: String(count),
+        threshold: String(HIGH_ENTROPY),
+        length: String(first.length),
+        entropy: first.entropy.toFixed(2),
+      }),
+    ];
+  },
+};
+
+const ESC = '(?:\\\\x[0-9a-fA-F]{2}|\\\\u[0-9a-fA-F]{4})';
+/** A literal opening with 40+ consecutive escapes. */
+const ESCAPE_RUN = new RegExp(`['"\`]${ESC}{40,}`, 'g');
+/** A short literal made only of escapes (javascript-obfuscator string arrays). */
+const ESCAPED_LITERAL = new RegExp(`(['"])${ESC}{4,}\\1`, 'g');
+const ESCAPED_LITERALS_MIN = 50;
+/** JSFuck: code written with only []()!+ */
+const JSFUCK = /[[\]()!+]{500,}/;
+
+/** Dense hex / unicode escapes or JSFuck: text hidden from readers and naive scanners. */
+export const escapeDensity: CustomRule = {
+  kind: 'custom',
+  id: 'ext/hex-or-unicode-escape-density.literal',
+  title: 'Dense hex / unicode escapes',
+  severity: 'warning',
+  languages: ['javascript'],
+  message: '{{what}}',
+  refs: [OBF_REF],
+  when: '\\\\[xu][0-9a-fA-F]|[[\\]()!+]{500}',
+  check(ctx: RuleContext): Finding[] {
+    const run = ESCAPE_RUN.exec(ctx.text);
+    ESCAPE_RUN.lastIndex = 0;
+    if (run) {
+      const n = run[0].match(/\\[xu]/g)?.length ?? 0;
+      return [ctx.report(ctx.lines.rangeOf(run.index, run.index + Math.min(run[0].length, 80)), undefined, { what: `A string literal opens with ${n}+ consecutive hex / unicode escapes.` })];
+    }
+    const literals = [...ctx.text.matchAll(ESCAPED_LITERAL)];
+    if (literals.length >= ESCAPED_LITERALS_MIN) {
+      const at = literals[0].index ?? 0;
+      return [ctx.report(ctx.lines.rangeOf(at, at + Math.min(literals[0][0].length, 80)), undefined, { what: `${literals.length} string literals consist only of hex / unicode escapes.` })];
+    }
+    const fuck = JSFUCK.exec(ctx.text);
+    if (fuck) {
+      return [ctx.report(ctx.lines.rangeOf(fuck.index, fuck.index + 80), undefined, { what: `${fuck[0].length} characters written only with []()!+ (JSFuck).` })];
+    }
+    return [];
+  },
+};
+
+export const EXTSCAN_CUSTOM_RULES: CustomRule[] = [obfuscatorMarkers, packedPayload, encodedBlob, highEntropyString, escapeDensity];

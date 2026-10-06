@@ -1327,6 +1327,7 @@ export const VECTOR_DEFS: readonly VectorDef[] = [
     "id": "ext/high-entropy-string",
     "category": "obfuscation",
     "engines": [
+      "ts",
       "rs"
     ],
     "weight": 2,
@@ -2524,6 +2525,183 @@ export const VECTOR_DEFS: readonly VectorDef[] = [
     "description": "Probability-style risk estimate from weights fitted on the baseline corpus.",
     "attack": [],
     "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "ext/network-outbound",
+    "category": "network",
+    "engines": [
+      "ts"
+    ],
+    "weight": 1,
+    "severity": "info",
+    "online": false,
+    "title": "Can make outbound connections",
+    "description": "Loads http, https, http2, net, tls, dgram, WebSocket or an HTTP client library (axios, node-fetch, undici, got), or calls fetch: the code can contact other machines.",
+    "attack": [
+      "T1071"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "ext/hardcoded-ip-or-raw-url",
+    "category": "network",
+    "engines": [
+      "ts"
+    ],
+    "weight": 4,
+    "severity": "warning",
+    "online": false,
+    "title": "Dynamic-DNS or tunnel host, or URL on an odd port",
+    "description": "Dynamic-DNS (duckdns, no-ip, ddns.net, dynu, afraid.org…) and tunnel hosts change owner and address freely and are typical command-and-control; URLs on non-standard ports point at ad-hoc servers. Public IP literals are `ext/hardcoded-ip`.",
+    "attack": [
+      "T1568.002",
+      "T1071"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "ext/telemetry-unauthorized",
+    "category": "network",
+    "engines": [
+      "ts"
+    ],
+    "weight": 3,
+    "severity": "warning",
+    "online": false,
+    "title": "Third-party tracking without declared telemetry",
+    "description": "Uses a tracking SDK or endpoint (Google Analytics, Mixpanel, Segment, Amplitude, PostHog, Heap, Hotjar) but declares no telemetry: no telemetry.json, no setting tagged `telemetry`, and no use of the editor's telemetry setting.",
+    "attack": [
+      "T1119"
+    ],
+    "cwe": [
+      "359"
+    ],
+    "doc": []
+  },
+  {
+    "id": "ext/sensitive-dotfiles",
+    "category": "data",
+    "engines": [
+      "ts"
+    ],
+    "weight": 4,
+    "severity": "warning",
+    "online": false,
+    "title": "Developer secret dotfiles",
+    "description": "Paths such as `~/.gnupg`, `~/.gitconfig`, `~/.ssh/config`, `~/.config/gh/hosts.yml`, `~/.pgpass`. SSH keys, cloud credentials, kube / docker configs and shell history (`ext/shell-history`) have their own vectors.",
+    "attack": [
+      "T1552.001"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "ext/workspace-secret-harvest",
+    "category": "data",
+    "engines": [
+      "ts"
+    ],
+    "weight": 5,
+    "severity": "warning",
+    "online": false,
+    "title": "Searches the workspace for key and credential files",
+    "description": "File searches or globs for `*.pem`, `*.key`, `*.p12`, `id_rsa`, `credentials.json` or `secrets.yaml`: collecting secrets from every project opened. `.env` searches are `ext/env-file-harvest`.",
+    "attack": [
+      "T1552.001",
+      "T1083"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "ext/hex-or-unicode-escape-density",
+    "category": "obfuscation",
+    "engines": [
+      "ts"
+    ],
+    "weight": 3,
+    "severity": "warning",
+    "online": false,
+    "title": "Dense hex / unicode escapes",
+    "description": "String literals made mostly of `\\xHH` or `\\uHHHH` escapes, or files where escapes dominate: text hidden from readers and naive scanners, typical of packers and JSFuck-style encoders.",
+    "attack": [
+      "T1027"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "ext/hidden-archive-or-blob",
+    "category": "supply-chain",
+    "engines": [
+      "ts"
+    ],
+    "weight": 3,
+    "severity": "warning",
+    "online": false,
+    "title": "Unreferenced archive, database or binary blob",
+    "description": "Archives (.zip, .tar.gz, .7z…), SQLite databases or unknown binaries shipped in the package whose names no code or manifest refers to: payloads staged for later extraction.",
+    "attack": [
+      "T1027.009",
+      "T1105"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "ext/command-override",
+    "category": "vscode-api",
+    "engines": [
+      "ts"
+    ],
+    "weight": 4,
+    "severity": "warning",
+    "online": false,
+    "title": "Takes over built-in commands",
+    "description": "Registers a command id the editor or a built-in owns (`type`, `workbench.action.terminal.*`, `git.commit`, `git.push`, clipboard and save actions) to intercept keystrokes or developer actions.",
+    "attack": [
+      "T1056",
+      "T1574"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "ext/debug-session-hook",
+    "category": "vscode-api",
+    "engines": [
+      "ts"
+    ],
+    "weight": 3,
+    "severity": "warning",
+    "online": false,
+    "title": "Hooks debug sessions",
+    "description": "A debug-adapter tracker for every debugger (`*`), debug-session events or `customRequest('evaluate')`: sees variables, memory and environment of the programs being debugged.",
+    "attack": [
+      "T1005"
+    ],
+    "cwe": [],
+    "doc": []
+  },
+  {
+    "id": "ext/webview-remote-content",
+    "category": "webview",
+    "engines": [
+      "ts"
+    ],
+    "weight": 3,
+    "severity": "warning",
+    "online": false,
+    "title": "Script-enabled webview loads remote content",
+    "description": "A webview with `enableScripts: true` in a bundle that loads remote scripts or frames: code that can change after review runs next to the extension's message bridge.",
+    "attack": [],
+    "cwe": [
+      "79",
+      "829"
+    ],
     "doc": []
   },
   {

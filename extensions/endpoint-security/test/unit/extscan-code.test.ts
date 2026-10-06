@@ -1,5 +1,6 @@
 import { publicIpv4, RuleEngine } from '@ide-ext/core';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { testHost } from '../../../../packages/core/test/grammars';
@@ -55,6 +56,7 @@ describe('extension code scan', () => {
       'ext/dynamic-code': ['extension.js:15 eval', 'payload.js:7 eval'],
       'ext/obfuscated': ['payload.js:2 obfuscator', 'payload.js:7 packed-payload'],
       'ext/decode-eval': ['payload.js:7 chain'],
+      'ext/high-entropy-string': ['payload.js:7 literal'],
       'ext/native-binary': ['helper.node:1'],
     });
     expect(score.level).toBe('high');
@@ -114,5 +116,19 @@ describe('extension code scan', () => {
     expect(md).toMatch(/\| Theme Helper|\| helpful-dev\.theme-helper/);
     expect(md).toContain('## Findings');
     expect(md).not.toContain('ext/risk');
+  });
+
+  it('reports archives and blobs that nothing refers to', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'blob-'));
+    mkdirSync(join(dir, 'out'));
+    mkdirSync(join(dir, 'node_modules', 'dep'), { recursive: true });
+    writeFileSync(join(dir, 'out', 'extension.js'), "const db = require('path').join(__dirname, 'grammar.db');");
+    writeFileSync(join(dir, 'grammar.db'), 'x');
+    writeFileSync(join(dir, 'stash.tar.gz'), 'x');
+    writeFileSync(join(dir, 'node_modules', 'dep', 'fixture.zip'), 'x');
+    const code = await scanExtensionCode(engine, testHost(), dir, { main: './out/extension.js' }, OPTS);
+    const blob = code.signals.find((x) => x.id === 'ext/hidden-archive-or-blob');
+    expect(blob?.message).toContain('stash.tar.gz');
+    expect(blob?.message).not.toMatch(/grammar\.db|fixture\.zip/);
   });
 });

@@ -1,4 +1,5 @@
 import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { LineIndex } from '@ide-ext/core';
 import type { ExtInfo, ManifestOptions } from './manifest';
 import { signal, SIGNALS, type Located, type Signal } from './signals';
@@ -216,3 +217,27 @@ export const DEEP_MANIFEST_VECTORS = [
   'ext/unusual-entry',
 ] as const;
 
+
+/**
+ * True when the extension declares that it collects telemetry: a `telemetry.json` (the format the
+ * editor's telemetry viewer reads), a setting tagged `telemetry`, or the official telemetry module,
+ * which honours the user's telemetry setting.
+ */
+export function declaresTelemetry(ext: ExtInfo): boolean {
+  const pkg = ext.packageJSON;
+  if (existsSync(join(ext.path, 'telemetry.json'))) {
+    return true;
+  }
+  const deps = { ...obj(pkg.dependencies), ...obj(pkg.optionalDependencies) };
+  if (Object.keys(deps).some((d) => d === '@vscode/extension-telemetry' || d === 'vscode-extension-telemetry')) {
+    return true;
+  }
+  const config = obj(pkg.contributes).configuration;
+  const blocks = Array.isArray(config) ? config.map(obj) : [obj(config)];
+  return blocks.some((b) => Object.values(obj(b.properties)).some((prop) => arr(obj(prop).tags).map(String).includes('telemetry')));
+}
+
+/** Drops signals that the manifest itself accounts for (declared telemetry). */
+export function withoutDeclared(ext: ExtInfo, signals: Signal[]): Signal[] {
+  return declaresTelemetry(ext) ? signals.filter((s) => s.id !== 'ext/telemetry-unauthorized') : signals;
+}

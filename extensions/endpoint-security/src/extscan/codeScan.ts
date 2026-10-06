@@ -2,7 +2,7 @@ import { parseRulePack, type Finding, type Rule, type RuleEngine, type TreeSitte
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
-import { extname, join, relative, resolve, sep } from 'node:path';
+import { basename, extname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { EXTSCAN_CUSTOM_RULES } from './codeRules';
 import { signal, signalIdOf, SIGNALS, type Located, type Signal } from './signals';
@@ -62,9 +62,14 @@ const MAX_MESSAGE = 240;
 interface Walk {
   js: string[];
   native: string[];
+  /** Archives, databases and extension-less binaries outside node_modules. */
+  blobs: string[];
 }
 
-async function walk(dir: string, includeNodeModules: boolean, out: Walk = { js: [], native: [] }): Promise<Walk> {
+/** Archives and databases worth a look when nothing refers to them. */
+const BLOB = /\.(?:zip|tar|tgz|gz|bz2|xz|7z|rar|sqlite3?|db|dat|bin)$/i;
+
+async function walk(dir: string, includeNodeModules: boolean, out: Walk = { js: [], native: [], blobs: [] }, inDeps = false): Promise<Walk> {
   let entries;
   try {
     entries = await readdir(dir, { withFileTypes: true });
@@ -79,7 +84,7 @@ async function walk(dir: string, includeNodeModules: boolean, out: Walk = { js: 
     const p = join(dir, e.name);
     if (e.isDirectory()) {
       if (!SKIP_DIRS.has(e.name) && (includeNodeModules || e.name !== 'node_modules')) {
-        await walk(p, includeNodeModules, out);
+        await walk(p, includeNodeModules, out, inDeps || e.name === 'node_modules');
       }
     } else if (e.isFile()) {
       const ext = extname(e.name).toLowerCase();
@@ -87,6 +92,8 @@ async function walk(dir: string, includeNodeModules: boolean, out: Walk = { js: 
         out.js.push(p);
       } else if (NATIVE.has(ext) || /\.so(\.\d+)+$/.test(e.name)) {
         out.native.push(p);
+      } else if (!inDeps && BLOB.test(e.name)) {
+        out.blobs.push(p);
       }
     }
   }
@@ -126,6 +133,18 @@ export async function scanExtensionCode(
 ): Promise<CodeScanResult> {
   const maxLocations = opts.maxLocations ?? 20;
   const found = await walk(dir, opts.includeNodeModules);
+  // Blobs nobody refers to by name: removed from this set as scanned text mentions them.
+  const unreferenced = new Map(found.blobs.map((b) => [basename(b), b]));
+  const mentions = (text: string) => {
+    for (const name of [...unreferenced.keys()]) {
+      if (text.includes(name) || text.includes(name.replace(/\.[^.]+$/, ''))) {
+        unreferenced.delete(name);
+      }
+    }
+  };
+  if (unreferenced.size) {
+    mentions(JSON.stringify(pkg));
+  }
   const files = prioritise(found.js, dir, pkg);
   const byRule = new Map<string, { locations: Located[]; count: number }>();
   const skipped: string[] = [];
@@ -162,6 +181,9 @@ export async function scanExtensionCode(
     }
     filesScanned++;
     bytesScanned += text.length;
+    if (unreferenced.size) {
+      mentions(text);
+    }
     for (const f of findings) {
       if (!SIGNALS[signalIdOf(f.ruleId)]) {
         continue; // e.g. a "rule failed" hint
@@ -195,6 +217,17 @@ export async function scanExtensionCode(
     signals.push(signal(id, `${first.finding.message} (${where})`, s.locations, { count: s.count }));
   }
 
+  if (unreferenced.size) {
+    const files = [...unreferenced.values()];
+    const zero = { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
+    const info = SIGNALS['ext/hidden-archive-or-blob'];
+    const locations = files.slice(0, maxLocations).map(
+      (file): Located => ({ file, finding: { ruleId: 'ext/hidden-archive-or-blob', severity: info.severity, message: `Unreferenced ${relative(dir, file)}`, range: zero, refs: info.refs ?? [] } }),
+    );
+    const names = files.map((f) => relative(dir, f));
+    const list = names.slice(0, 3).join(', ') + (names.length > 3 ? `, … (${names.length})` : '');
+    signals.push(signal('ext/hidden-archive-or-blob', `Ships archive / database / blob file(s) no code or manifest refers to: ${list}.`, locations, { count: names.length }));
+  }
   if (found.native.length) {
     const names = found.native.map((f) => relative(dir, f));
     const zero = { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
