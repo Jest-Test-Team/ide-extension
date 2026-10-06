@@ -92,8 +92,10 @@ export function classify(events: RuntimeEvent[], sb: Sandbox, opts: { duration: 
     const dl = spawns.find((e) => DOWNLOAD_AND_RUN.test(line(e)));
     const shown = (bad[0] ?? spawns[0]) as RuntimeEvent;
     const blocked = spawns.every((e) => e.blocked) ? ' (blocked by the audit; recorded only)' : '';
+    const envKeys = [...new Set(spawns.flatMap((e) => Object.keys((e.env as Record<string, string> | undefined) ?? {})))];
+    const env = envKeys.length ? `; extra environment ${envKeys.slice(0, 6).join(', ')}` : '';
     add(
-      make('runtime/child-process-spawned', `${spawns.length} process start(s), e.g. \`${line(shown).slice(0, 160)}\`${blocked}${dl ? '; downloads and runs code' : ''}`, bad.length ? bad : spawns, sb, {
+      make('runtime/child-process-spawned', `${spawns.length} process start(s), e.g. \`${line(shown).slice(0, 160)}\`${blocked}${env}${dl ? '; downloads and runs code' : ''}`, bad.length ? bad : spawns, sb, {
         weight: dl ? 9 : bad.length ? 7 : 2,
         force: dl ? 'high' : undefined,
       }),

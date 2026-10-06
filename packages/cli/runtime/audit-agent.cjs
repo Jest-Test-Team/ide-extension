@@ -16,17 +16,11 @@ const writeSync = fs.writeSync;
 const fd = LOG ? fs.openSync(LOG, 'a') : -1;
 let busy = false;
 
-function frame() {
-  const stack = new Error().stack || '';
-  const line = stack.split('\n').find((l) => EXT && l.includes(EXT) && !l.includes('audit-agent') && !l.includes('vscode-mock'));
-  return line ? line.trim().replace(/^at\s+/, '') : undefined;
-}
+const frame = () => ((new Error().stack || '').split('\n').find((l) => EXT && l.includes(EXT) && !/audit-agent|vscode-mock/.test(l)) || '').trim().replace(/^at\s+/, '') || undefined;
 
 /** Writes one event; `force` skips attribution (events the harness reports for the extension). */
 function record(kind, data, force) {
-  if (fd < 0 || busy) {
-    return;
-  }
+  if (fd < 0 || busy) { return; }
   busy = true;
   try {
     const at = frame();
@@ -45,18 +39,18 @@ let spawning = 0; // exec → execFile → spawn internally: record the outermos
 const str = (v, n = 300) => (typeof v === 'string' ? v : v === undefined ? '' : String(v)).slice(0, n);
 function wrap(obj, name, before) {
   const orig = obj && obj[name];
-  if (typeof orig !== 'function' || orig.__jestAudit) {
-    return;
-  }
+  if (typeof orig !== 'function' || orig.__jestAudit) { return; }
   const w = function (...args) {
     const r = before.call(this, args, orig);
-    if (r && r.replaced) {
-      return r.value;
-    }
+    if (r && r.replaced) { return r.value; }
     const nested = obj === cp;
     spawning += nested ? 1 : 0;
     try {
-      return orig.apply(this, r && r.args ? r.args : args);
+      const out = orig.apply(this, r && r.args ? r.args : args);
+      if (nested && spawning === 1 && out && out.pid) {
+        record('spawn-pid', { pid: out.pid, fn: name }); // DAST: is it still alive after exit?
+      }
+      return out;
     } finally {
       spawning -= nested ? 1 : 0;
     }
@@ -70,32 +64,19 @@ function wrap(obj, name, before) {
 const noop = [process.execPath, ['-e', 'process.exit(126)']];
 for (const name of ['spawn', 'spawnSync', 'execFile', 'execFileSync', 'fork', 'exec', 'execSync']) {
   wrap(cp, name, function (args) {
-    if (spawning) {
-      return undefined;
-    }
+    if (spawning) { return undefined; }
     const shell = name.startsWith('exec') && !name.startsWith('execFile');
     const cmd = str(args[0], 500);
     const argv = !shell && Array.isArray(args[1]) ? args[1].map((a) => str(a, 200)) : [];
-    record('spawn', { fn: name, cmd, argv, blocked: !ALLOW_EXEC });
-    if (ALLOW_EXEC) {
-      return undefined;
-    }
+    const opts = args.find((a, i) => i > 0 && a && typeof a === 'object' && !Array.isArray(a)) || {};
+    // Environment the child gets beyond the parent's own (names and short values: tokens show up here).
+    const env = opts.env ? Object.fromEntries(Object.entries(opts.env).filter(([k, v]) => process.env[k] !== v).slice(0, 30).map(([k, v]) => [k, str(v, 80)])) : undefined;
+    record('spawn', { fn: name, cmd, argv, env, blocked: !ALLOW_EXEC });
+    if (ALLOW_EXEC) { return undefined; }
     const rest = args.slice(shell ? 1 : Array.isArray(args[1]) ? 2 : 1);
-    if (name === 'fork') {
-      return { args: [require.resolve('./noop.cjs'), [], ...rest.filter((a) => typeof a !== 'string')] };
-    }
+    if (name === 'fork') { return { args: [require.resolve('./noop.cjs'), [], ...rest.filter((a) => typeof a !== 'string')] }; }
     return { args: shell ? [`"${noop[0]}" -e "process.exit(126)"`, ...rest] : [noop[0], noop[1], ...rest] };
   });
-}
-for (const name of ['spawn', 'execFile', 'fork', 'exec']) {
-  const orig = cp[name];
-  cp[name] = Object.assign(function (...args) {
-    const child = orig.apply(this, args);
-    if (child && child.pid) {
-      record('spawn-pid', { pid: child.pid, fn: name });
-    }
-    return child;
-  }, { __jestAudit: true });
 }
 
 // ---- file system ----
@@ -111,18 +92,12 @@ for (const [op, names] of Object.entries(fsOps)) {
 }
 
 // ---- network ----
-const net = require('net');
-const http = require('http');
-const https = require('https');
-const dns = require('dns');
-const dgram = require('dgram');
+const [net, http, https, dns, dgram] = ['net', 'http', 'https', 'dns', 'dgram'].map((m) => require(m));
 const refused = (host) => Object.assign(new Error(`getaddrinfo ENOTFOUND ${host} (jest-security --offline)`), { code: 'ENOTFOUND', hostname: host });
 const local = (h) => /^(localhost|127\.|::1$)/.test(String(h));
 wrap(net.Socket.prototype, 'connect', function (args) {
   const o = typeof args[0] === 'object' && args[0] !== null ? args[0] : { port: args[0], host: args[1] };
-  if (o.path) {
-    return undefined; // local IPC pipe
-  }
+  if (o.path) { return undefined; } // local IPC pipe
   record('connect', { host: str(o.host || 'localhost'), port: Number(o.port) || 0, tls: !!this.encrypted || !!o.servername });
   if (OFFLINE && !local(o.host || 'localhost')) {
     const blocked = { ...o, host: '127.0.0.1', port: 9 };
@@ -136,7 +111,8 @@ for (const [mod, scheme] of [[http, 'http'], [https, 'https']]) {
     mod[name] = function (...args) {
       const u = typeof args[0] === 'string' || args[0] instanceof URL ? new URL(String(args[0])) : null;
       const o = args.find((a) => a && typeof a === 'object' && !(a instanceof URL)) || {};
-      const info = { scheme, method: str(o.method || 'GET'), host: str(u ? u.hostname : o.hostname || o.host), port: Number(u ? u.port : o.port) || (scheme === 'https' ? 443 : 80), path: str(u ? u.pathname + u.search : o.path, 200) };
+      const headerBytes = Buffer.byteLength(JSON.stringify(o.headers || {}));
+      const info = { scheme, method: str(o.method || 'GET'), host: str(u ? u.hostname : o.hostname || o.host), port: Number(u ? u.port : o.port) || (scheme === 'https' ? 443 : 80), path: str(u ? u.pathname + u.search : o.path, 200), headerBytes };
       const req = orig.apply(this, args);
       let bytes = 0;
       let sample = '';
@@ -162,7 +138,8 @@ if (typeof globalThis.fetch === 'function') {
   globalThis.fetch = function (input, init = {}) {
     const url = new URL(String(input && input.url ? input.url : input));
     const body = typeof init.body === 'string' ? init.body : init.body ? '[binary]' : '';
-    record('http', { scheme: url.protocol.replace(':', ''), method: str(init.method || 'GET'), host: url.hostname, port: Number(url.port) || 0, path: str(url.pathname + url.search, 200), bytes: Buffer.byteLength(body), sample: body.slice(0, 2000), via: 'fetch' });
+    const headerBytes = Buffer.byteLength(JSON.stringify(init.headers || {}));
+    record('http', { scheme: url.protocol.replace(':', ''), method: str(init.method || 'GET'), host: url.hostname, port: Number(url.port) || 0, path: str(url.pathname + url.search, 200), headerBytes, bytes: Buffer.byteLength(body), sample: body.slice(0, 2000), via: 'fetch' });
     return f.apply(this, arguments);
   };
 }
@@ -203,9 +180,7 @@ globalThis.Function = new Proxy(Function, {
 
 // ---- vscode API (real Extension Host): overlay the clipboard ----
 function wrapVscode(api) {
-  if (!api || !api.env || api.__jestAudit) {
-    return api;
-  }
+  if (!api || !api.env || api.__jestAudit) { return api; }
   const clipboard = Object.create(api.env.clipboard, {
     readText: { value: (...a) => (record('clipboard', {}, true), api.env.clipboard.readText(...a)) },
   });
