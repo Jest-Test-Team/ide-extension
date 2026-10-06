@@ -78,12 +78,12 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@v5
       with:
         node-version: ${{ inputs.node-version }}
 
     - name: Cache downloaded extensions
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ runner.temp }}/jest-security-vsix
         key: jest-security-vsix-${{ runner.os }}-${{ hashFiles('**/.vscode/extensions.json', '**/devcontainer.json', '**/.devcontainer.json', '**/*.code-workspace') }}
@@ -182,7 +182,7 @@ runs:
     - name: Upload SARIF to code scanning
       if: inputs.sarif == 'true' && steps.scan.outputs.scanned != '0'
       continue-on-error: true
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: ${{ steps.scan.outputs.sarif-file }}
         category: ${{ inputs.sarif-category }}

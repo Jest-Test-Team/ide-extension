@@ -321,7 +321,7 @@ permissions:
   pull-requests: write     # summary comment on the PR
   security-events: write   # SARIF in code scanning
 steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@v5
   - uses: Jest-Test-Team/ide-extension@v1
     with:
       fail-on: high        # or medium
@@ -659,7 +659,7 @@ permissions:
   pull-requests: write     # 在 PR 留下摘要留言
   security-events: write   # 上傳 SARIF 到 code scanning
 steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@v5
   - uses: Jest-Test-Team/ide-extension@v1
     with:
       fail-on: high        # 或 medium
