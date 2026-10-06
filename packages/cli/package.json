@@ -28,6 +28,9 @@
     "prepublishOnly": "node build.mjs --production"
   },
   "devDependencies": {
-    "@ide-ext/core": "*"
+    "@ide-ext/core": "*",
+    "@types/yauzl": "^3.4.0",
+    "jszip": "^3.10.2",
+    "yauzl": "^3.4.0"
   }
 }
