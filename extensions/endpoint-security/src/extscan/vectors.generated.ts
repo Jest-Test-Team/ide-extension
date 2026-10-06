@@ -2533,7 +2533,7 @@ export const VECTOR_DEFS: readonly VectorDef[] = [
     "engines": [
       "ts"
     ],
-    "weight": 1,
+    "weight": 0,
     "severity": "info",
     "online": false,
     "title": "Can make outbound connections",
@@ -2675,7 +2675,7 @@ export const VECTOR_DEFS: readonly VectorDef[] = [
     "engines": [
       "ts"
     ],
-    "weight": 3,
+    "weight": 2,
     "severity": "warning",
     "online": false,
     "title": "Hooks debug sessions",

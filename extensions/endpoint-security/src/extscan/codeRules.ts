@@ -180,7 +180,7 @@ const ESC = '(?:\\\\x[0-9a-fA-F]{2}|\\\\u[0-9a-fA-F]{4})';
 const ESCAPE_RUN = new RegExp(`['"\`]${ESC}{40,}`, 'g');
 /** A short literal made only of escapes (javascript-obfuscator string arrays). */
 const ESCAPED_LITERAL = new RegExp(`(['"])${ESC}{4,}\\1`, 'g');
-const ESCAPED_LITERALS_MIN = 50;
+const ESCAPED_LITERALS_MIN = 150;
 /** JSFuck: code written with only []()!+ */
 const JSFUCK = /[[\]()!+]{500,}/;
 

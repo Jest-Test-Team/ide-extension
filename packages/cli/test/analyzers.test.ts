@@ -58,7 +58,7 @@ describe.runIf(posix)('deep scan with analyzers', () => {
     await main(['scan-extension', DEEP, '--deep', '--format', 'text', '--fail-on', 'none'], io);
     const text = io.stdout();
     expect(text).toContain('== Coverage ==');
-    expect(text).toMatch(/Coverage: \d+\/147 vectors ran \(TypeScript core, Rust analyzer 0\.0\.0-mock\)/);
+    expect(text).toMatch(/Coverage: \d+\/157 vectors ran \(TypeScript core, Rust analyzer 0\.0\.0-mock\)/);
     expect(text).toMatch(/Process & system\s+\S+\s+\d+\/19/);
     expect(text).toContain('Go analyzer: jest-ext-go not installed');
     expect(text).toContain('needs --online');
@@ -67,7 +67,7 @@ describe.runIf(posix)('deep scan with analyzers', () => {
   it('runs TypeScript only without --deep', async () => {
     const io = captureIo(REPO);
     await main(['scan-extension', DEEP, '--format', 'text', '--fail-on', 'none'], io);
-    expect(io.stdout()).toMatch(/Coverage: 96\/147 vectors ran \(TypeScript core\)/);
+    expect(io.stdout()).toMatch(/Coverage: 106\/157 vectors ran \(TypeScript core\)/);
     expect(io.stdout()).toContain('Run with --deep');
   });
 

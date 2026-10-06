@@ -1290,7 +1290,7 @@ vectors:
   - id: ext/network-outbound
     category: network
     engines: [ts]
-    weight: 1
+    weight: 0
     severity: info
     title: "Can make outbound connections"
     description: "Loads http, https, http2, net, tls, dgram, WebSocket or an HTTP client library (axios, node-fetch, undici, got), or calls fetch: the code can contact other machines."
@@ -1363,7 +1363,7 @@ vectors:
   - id: ext/debug-session-hook
     category: vscode-api
     engines: [ts]
-    weight: 3
+    weight: 2
     severity: warning
     title: "Hooks debug sessions"
     description: "A debug-adapter tracker for every debugger (`*`), debug-session events or `customRequest('evaluate')`: sees variables, memory and environment of the programs being debugged."
