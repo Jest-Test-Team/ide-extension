@@ -160,8 +160,11 @@ runs:
         [ "$DEEP" = "true" ] && args+=(--deep)
         read -r -d '' -a files <<< "$MANIFESTS" || true
         args+=("${files[@]}")
+        # GitHub runs bash with -e: keep going on exit 1 / 2 so the outputs, summary and comment still happen.
+        set +e
         $CLI "${args[@]}"
         code=$?
+        set -e
         echo "exit-code=$code" >> "$GITHUB_OUTPUT"
         echo "sarif-file=$sarif" >> "$GITHUB_OUTPUT"
         echo "summary-file=$summary" >> "$GITHUB_OUTPUT"

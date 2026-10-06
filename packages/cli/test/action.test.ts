@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
@@ -53,5 +55,39 @@ describe('GitHub Action (action.yml)', () => {
       expect(Object.keys(scanManifest.flags!), `--${f}`).toContain(f);
     }
     expect(flags.size).toBeGreaterThan(8);
+  });
+
+  it('the scan step records the CLI exit code under GitHub\'s bash -eo pipefail instead of aborting', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'jest-sec-action-'));
+    const script = join(dir, 'scan.sh');
+    writeFileSync(script, action.runs.steps.find((s) => s.id === 'scan')!.run!);
+    const stub = join(dir, 'cli.sh');
+    writeFileSync(stub, 'echo "called: $*"; exit 1\n', { mode: 0o755 });
+    for (const f of ['out', 'summary']) {
+      writeFileSync(join(dir, f), '');
+    }
+    const env = {
+      PATH: process.env.PATH,
+      RUNNER_TEMP: dir,
+      GITHUB_OUTPUT: join(dir, 'out'),
+      GITHUB_STEP_SUMMARY: join(dir, 'summary'),
+      CLI: `bash ${stub}`,
+      BASE: 'abc123',
+      MANIFESTS: '.vscode/extensions.json\nother dir/x.code-workspace',
+      SCAN_ALL: 'false',
+      FAIL_ON: '',
+      POLICY: '',
+      REGISTRY: 'marketplace',
+      REGISTRY_URL: '',
+      TARGET: 'linux-x64',
+      DEEP: 'false',
+    };
+    // Exactly how GitHub runs `shell: bash` steps.
+    const res = spawnSync('bash', ['--noprofile', '--norc', '-eo', 'pipefail', script], { env, encoding: 'utf8' });
+    expect(res.status, res.stderr).toBe(0);
+    expect(readFileSync(join(dir, 'out'), 'utf8')).toMatch(/^exit-code=1$/m);
+    expect(readFileSync(join(dir, 'out'), 'utf8')).toMatch(/^scanned=0$/m);
+    expect(res.stdout).toContain('--base abc123');
+    expect(res.stdout).toContain('.vscode/extensions.json other');
   });
 });
