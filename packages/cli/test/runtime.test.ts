@@ -1,8 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { classify } from '../src/runtime/classify';
+import { findOrphans, parseTrace } from '../src/runtime/dast';
 import { runHarness } from '../src/runtime/run';
+import { injectAgent } from '../src/runtime/vscode';
 import { REPO } from './io';
 
 const FX = join(REPO, 'packages/cli/test/fixtures/runtime');
@@ -42,4 +45,39 @@ describe('runtime audit (headless harness)', () => {
     expect(c.errors).toEqual([]);
     expect(c.api.some((e) => e.api === 'commands.registerCommand' && e.id === 'benign.hello')).toBe(true);
   }, 60_000);
+
+  it.runIf(process.platform !== 'win32')('reports and kills processes that outlive the extension (DAST)', async () => {
+    const run = await runHarness(join(FX, 'daemon'), { duration: 1, offline: true, allowExec: true });
+    const orphans = findOrphans(run.events);
+    expect(orphans).toHaveLength(1);
+    expect(orphans[0].command).toContain('sleep 30');
+    expect(findOrphans(run.events)).toEqual([]); // killed
+    const c = classify(run.events, run.sandbox, { duration: 1, manifest: manifest('daemon'), orphans });
+    const o = c.signals.find((s) => s.id === 'runtime/orphan-process-daemon');
+    expect(o?.force).toBe('high');
+    expect(o?.message).toContain('sleep 30');
+  }, 60_000);
+});
+
+describe('runtime audit helpers', () => {
+  it('parses kernel probe output and subtracts the JIT baseline', () => {
+    const k = parseTrace('Attaching 6 probes...\nREADY\nRAWSOCK 42 2 node\nRWX mprotect 42 4096 node\nRWX mmap 43 8192 helper\n');
+    expect(k.rawSockets).toEqual([{ pid: 42, family: 2, comm: 'node' }]);
+    expect(k.rwx).toHaveLength(2);
+    const sb = { root: '/s', home: '/s/home', workspace: '/s/ws', ext: '/s/ext', log: '/s/l' };
+    const ids = (baselineRwx: number) => classify([], sb, { duration: 1, manifest: {}, kernel: k, baselineRwx }).signals.map((s) => s.id);
+    expect(ids(0)).toEqual(['runtime/network-raw-socket', 'runtime/mprotect-rwx']);
+    expect(ids(2)).toEqual(['runtime/network-raw-socket']);
+  });
+
+  it('injects the agent ahead of the extension entry point', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'inject-'));
+    cpSync(join(FX, 'benign'), dir, { recursive: true });
+    injectAgent(dir);
+    const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as { main: string };
+    expect(pkg.main).toBe('./__jest_audit_main.js');
+    const shim = readFileSync(join(dir, '__jest_audit_main.js'), 'utf8');
+    expect(shim).toMatch(/audit-agent\.cjs/);
+    expect(shim).toContain("require(\"./extension.js\")");
+  });
 });

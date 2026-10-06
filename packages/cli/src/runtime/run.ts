@@ -3,6 +3,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync,
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { assetDir } from '../lib/assets';
+import { gateFile, kernelTracingUnavailable, openGate, startTracer, type KernelEvents } from './dast';
 
 /** Marker planted in every decoy secret; finding it in an outbound request proves exfiltration. */
 export const HONEY = 'DECOY-JEST-AUDIT';
@@ -22,6 +23,8 @@ export interface RunOptions {
   offline?: boolean;
   /** Extra time allowed for loading and activation before the run is killed. */
   graceSeconds?: number;
+  /** Attach kernel probes (Linux, root, bpftrace) for raw sockets and W+X memory. */
+  kernel?: boolean;
 }
 
 export interface Sandbox {
@@ -38,6 +41,10 @@ export interface RunResult {
   exitCode: number | null;
   timedOut: boolean;
   stderr: string;
+  /** Kernel-level observations, when probes ran. */
+  kernel?: KernelEvents;
+  /** Why kernel probes did not run. */
+  kernelSkipped?: string;
 }
 
 /** Decoy secrets in the fake home folder, relative paths → content. */
@@ -123,14 +130,24 @@ export function readEvents(log: string): RuntimeEvent[] {
  * Runs the extension headless: a child Node process loads the audit agent, then the harness, which
  * activates the extension against the recording `vscode` mock. THIS EXECUTES THE EXTENSION'S CODE.
  */
-export function runHarness(extDir: string, opts: RunOptions, sb = createSandbox(extDir)): Promise<RunResult> {
+export async function runHarness(extDir: string, opts: RunOptions, sb = createSandbox(extDir)): Promise<RunResult> {
   const dir = assetDir('runtime');
   const args = ['--require', join(dir, 'audit-agent.cjs'), join(dir, 'harness.cjs'), sb.ext, sb.workspace, String(opts.duration), ...(opts.invokeCommands ? ['--invoke-commands'] : [])];
-  return new Promise((resolve) => {
-    const child = spawn(process.execPath, args, { cwd: sb.workspace, env: sandboxEnv(sb, opts), stdio: ['ignore', 'ignore', 'pipe'] });
+  const kernelSkipped = opts.kernel ? kernelTracingUnavailable() : 'not requested (--kernel)';
+  const env = sandboxEnv(sb, opts);
+  if (!kernelSkipped) {
+    env.JEST_AUDIT_GATE = gateFile(sb.root);
+  }
+  const child = spawn(process.execPath, args, { cwd: sb.workspace, env, stdio: ['ignore', 'ignore', 'pipe'] });
+  const tracer = !kernelSkipped && child.pid ? startTracer(child.pid, sb.root) : undefined;
+  if (tracer) {
+    await tracer.ready;
+    openGate(sb.root);
+  }
+  const done = await new Promise<{ code: number | null; timedOut: boolean; stderr: string }>((resolve) => {
     let stderr = '';
     let timedOut = false;
-    child.stderr.on('data', (b: Buffer) => (stderr = (stderr + b.toString()).slice(-4000)));
+    child.stderr!.on('data', (b: Buffer) => (stderr = (stderr + b.toString()).slice(-4000)));
     const timer = setTimeout(
       () => {
         timedOut = true;
@@ -140,7 +157,21 @@ export function runHarness(extDir: string, opts: RunOptions, sb = createSandbox(
     );
     child.on('close', (code) => {
       clearTimeout(timer);
-      resolve({ sandbox: sb, events: readEvents(sb.log), exitCode: code, timedOut, stderr });
+      resolve({ code, timedOut, stderr });
     });
   });
+  const kernel = tracer ? await tracer.stop() : undefined;
+  return { sandbox: sb, events: readEvents(sb.log), exitCode: done.code, timedOut: done.timedOut, stderr: done.stderr, kernel, kernelSkipped };
+}
+
+/** Runs an empty extension the same way: the W+X memory the runtime itself produces (V8's JIT). */
+export async function kernelBaseline(opts: RunOptions): Promise<number | undefined> {
+  if (!opts.kernel || kernelTracingUnavailable()) {
+    return undefined;
+  }
+  const empty = mkdtempSync(join(tmpdir(), 'jest-audit-empty-'));
+  writeFileSync(join(empty, 'package.json'), JSON.stringify({ name: 'empty', version: '0.0.0', main: './index.js' }));
+  writeFileSync(join(empty, 'index.js'), 'exports.activate = () => undefined;\n');
+  const r = await runHarness(empty, { ...opts, invokeCommands: false });
+  return r.kernel?.rwx.length;
 }

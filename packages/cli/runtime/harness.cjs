@@ -53,7 +53,17 @@ const context = {
 
 const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]);
 
+/** Kernel probes attach to this process first; the CLI opens the gate once they are ready. */
+async function waitForGate() {
+  const gate = process.env.JEST_AUDIT_GATE;
+  const until = Date.now() + 20000;
+  while (gate && !fs.existsSync(gate) && Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 50));
+  }
+}
+
 async function main() {
+  await waitForGate();
   const pkg = JSON.parse(fs.readFileSync(path.join(extDir, 'package.json'), 'utf8'));
   context.extension.packageJSON = pkg;
   const entry = pkg.main ? path.resolve(extDir, pkg.main) : undefined;

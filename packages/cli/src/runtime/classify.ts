@@ -3,6 +3,7 @@ import { dirname, isAbsolute, relative } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { signal, type Located, type Signal } from '../../../../extensions/endpoint-security/src/extscan/signals';
+import type { KernelEvents, Orphan } from './dast';
 import { DECOY_HOME, HONEY, type RuntimeEvent, type Sandbox } from './run';
 
 /** Runtime vector → the events that support it (the evidence chain uses them). */
@@ -65,7 +66,16 @@ function declaredHosts(manifest: Record<string, unknown>): string[] {
 const PLATFORM = /(^|\.)(visualstudio\.com|vscode-cdn\.net|microsoft\.com|github\.com|githubusercontent\.com|npmjs\.org|open-vsx\.org)$/i;
 
 /** Turns the agent's event log into runtime signals. */
-export function classify(events: RuntimeEvent[], sb: Sandbox, opts: { duration: number; manifest: Record<string, unknown> }): Classified {
+export interface DastInput {
+  /** Processes still alive after the extension host exited. */
+  orphans?: Orphan[];
+  /** Kernel probes (Linux, root, bpftrace). */
+  kernel?: KernelEvents;
+  /** W+X mappings an empty extension produces under the same runtime. */
+  baselineRwx?: number;
+}
+
+export function classify(events: RuntimeEvent[], sb: Sandbox, opts: { duration: number; manifest: Record<string, unknown> } & DastInput): Classified {
   const signals: Signal[] = [];
   const evidence: Evidence = new Map();
   const add = (s: Signal, evs: RuntimeEvent[]) => {
@@ -175,14 +185,39 @@ export function classify(events: RuntimeEvent[], sb: Sandbox, opts: { duration: 
     );
   }
 
-  // Non-HTTP traffic from JavaScript (kernel-level raw sockets come from the OS tracer).
+  // Non-HTTP traffic: from JavaScript (UDP, TCP to non-web ports) and raw sockets from the kernel probes.
   const httpHosts = new Set(by('http').map((e) => String(e.host)));
   const raw = events.filter(
     (e) => (e.kind === 'udp' || e.kind === 'udp-send' || (e.kind === 'connect' && !WEB_PORTS.has(Number(e.port)) && !httpHosts.has(String(e.host)))) && !LOCAL.test(String(e.host ?? 'x')),
   );
-  if (raw.length) {
+  const kraw: RuntimeEvent[] = (opts.kernel?.rawSockets ?? []).map((k) => ({ t: 0, kind: 'raw-socket', pid: k.pid, family: k.family, comm: k.comm }));
+  if (raw.length || kraw.length) {
     const what = raw.map((e) => (e.kind.startsWith('udp') ? `UDP${e.host ? ` ${e.host}:${e.port}` : ''}` : `TCP ${e.host}:${e.port}`));
-    add(make('runtime/network-raw-socket', `non-HTTP traffic: ${[...new Set(what)].slice(0, 4).join(', ')}`, raw, sb, { weight: raw.some((e) => e.kind.startsWith('udp')) ? 4 : 3 }), raw);
+    what.push(...kraw.map((k) => `SOCK_RAW (family ${k.family}) in ${k.comm}`));
+    add(
+      make('runtime/network-raw-socket', `non-HTTP traffic: ${[...new Set(what)].slice(0, 4).join(', ')}`, raw, sb, {
+        weight: kraw.length ? 6 : raw.some((e) => e.kind.startsWith('udp')) ? 4 : 3,
+      }),
+      [...raw, ...kraw],
+    );
+  }
+
+  // Processes that outlived the extension host.
+  if (opts.orphans?.length) {
+    const evs: RuntimeEvent[] = opts.orphans.map((o) => ({ t: 0, kind: 'orphan', pid: o.pid, ppid: o.ppid, command: o.command }));
+    const spawnAt = by('spawn');
+    add(
+      make('runtime/orphan-process-daemon', `${opts.orphans.length} process(es) still running after exit, e.g. pid ${opts.orphans[0].pid} \`${String(opts.orphans[0].command ?? '?').slice(0, 120)}\` (killed by the audit)`, spawnAt, sb, { force: 'high' }),
+      evs,
+    );
+  }
+
+  // Writable + executable memory beyond what an empty extension produces.
+  const rwx = opts.kernel?.rwx ?? [];
+  const excess = rwx.length - (opts.baselineRwx ?? 0);
+  if (excess > 0) {
+    const evs: RuntimeEvent[] = rwx.map((r) => ({ t: 0, kind: 'rwx', call: r.call, pid: r.pid, len: r.len, comm: r.comm }));
+    add(make('runtime/mprotect-rwx', `${rwx.length} W+X mapping(s) (${opts.baselineRwx ?? 0} expected from the JIT), e.g. ${rwx[0].call} ${rwx[0].len} bytes in ${rwx[0].comm}`, [], sb), evs);
   }
 
   return { signals, evidence, api: by('vscode'), errors: by('error') };
