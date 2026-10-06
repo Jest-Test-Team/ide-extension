@@ -7,6 +7,7 @@ import { analyzerSearchPath, discoverAnalyzers } from './analyzers/host';
 import { ENGINE_BINARIES, ENGINE_NAMES, type EngineId } from './analyzers/protocol';
 import { SIGNALS } from '../../../extensions/endpoint-security/src/extscan/signals';
 import { analysisText, analyzeExtensions } from './extAnalysis';
+import { scanManifest } from './ci/command';
 import { chmodSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, join } from 'node:path';
@@ -505,10 +506,11 @@ export const SECURITY_TOOL: Tool = {
     scan,
     scanExtension,
     { ...scanExtension, name: 'scan-extensions', summary: 'Alias of scan-extension' },
+    scanManifest,
     analyzersCmd,
     doctor,
   ],
-  footer: 'Examples:\n  jest-security scan                      # full audit: code + installed extensions → report + security.sarif\n  jest-security scan-extension            # installed extensions only: discover, scan, analyse → report + security.sarif\n  jest-security endpoint simulate attack.ptree.yaml\n  jest-security hw entropy trng.bin --bits 8\n  jest-security julia report profile.json',
+  footer: 'Examples:\n  jest-security scan                      # full audit: code + installed extensions → report + security.sarif\n  jest-security scan-extension            # installed extensions only: discover, scan, analyse → report + security.sarif\n  jest-security scan-manifest --base origin/main   # CI: scan extensions this branch adds to the repo\'s extension lists\n  jest-security endpoint simulate attack.ptree.yaml\n  jest-security hw entropy trng.bin --bits 8\n  jest-security julia report profile.json',
 };
 
 export async function main(argv: readonly string[], io: Io = processIo()): Promise<number> {

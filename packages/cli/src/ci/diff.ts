@@ -53,7 +53,9 @@ export function diffManifests(base: readonly ManifestEntry[] | undefined, head: 
     }
   }
   const order: Record<ChangeStatus, number> = { added: 0, changed: 1, removed: 2, unchanged: 3 };
-  return out.sort((x, y) => order[x.status] - order[y.status] || x.id.localeCompare(y.id));
+  // Within a status, follow the files: reports then read in the same order as the manifest.
+  const at = (c: ManifestChange) => c.entries[0];
+  return out.sort((x, y) => order[x.status] - order[y.status] || at(x).file.localeCompare(at(y).file) || at(x).line - at(y).line || x.id.localeCompare(y.id));
 }
 
 /** Extensions a change introduces or re-versions: what gets scanned and can fail the check. */
