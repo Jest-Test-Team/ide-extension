@@ -40,6 +40,8 @@ function record(kind, data, force) {
   }
 }
 
+const cp = require('child_process');
+let spawning = 0; // exec → execFile → spawn internally: record the outermost call only
 const str = (v, n = 300) => (typeof v === 'string' ? v : v === undefined ? '' : String(v)).slice(0, n);
 function wrap(obj, name, before) {
   const orig = obj && obj[name];
@@ -48,7 +50,16 @@ function wrap(obj, name, before) {
   }
   const w = function (...args) {
     const r = before.call(this, args, orig);
-    return r && r.replaced ? r.value : orig.apply(this, r && r.args ? r.args : args);
+    if (r && r.replaced) {
+      return r.value;
+    }
+    const nested = obj === cp;
+    spawning += nested ? 1 : 0;
+    try {
+      return orig.apply(this, r && r.args ? r.args : args);
+    } finally {
+      spawning -= nested ? 1 : 0;
+    }
   };
   w.__jestAudit = true;
   Object.defineProperty(w, 'name', { value: name });
@@ -56,10 +67,12 @@ function wrap(obj, name, before) {
 }
 
 // ---- child processes ----
-const cp = require('child_process');
 const noop = [process.execPath, ['-e', 'process.exit(126)']];
 for (const name of ['spawn', 'spawnSync', 'execFile', 'execFileSync', 'fork', 'exec', 'execSync']) {
   wrap(cp, name, function (args) {
+    if (spawning) {
+      return undefined;
+    }
     const shell = name.startsWith('exec') && !name.startsWith('execFile');
     const cmd = str(args[0], 500);
     const argv = !shell && Array.isArray(args[1]) ? args[1].map((a) => str(a, 200)) : [];

@@ -334,6 +334,55 @@ The pull request then gets:
 
 To run the same check locally or in another CI system: `jest-security scan-manifest --base origin/main`. See the [CLI README](packages/cli/README.md#extension-guard-block-risky-extensions-in-pull-requests) for every option.
 
+#### Step 5c — Inspect an extension deeply, then watch what it really does
+
+**Static deep scan (nothing runs).** 157 vectors cover:
+- the manifest and code: processes, credential paths, exfiltration endpoints, dynamic-DNS hosts, untracked telemetry, obfuscation (entropy above 5.8 bits/char, hex / unicode escape density, JSFuck), unreferenced archives and blobs, and VS Code API abuse (terminal injection, take-over of built-in commands, debug-session hooks, remote content in script-enabled webviews);
+- with the optional analyzers: data flow, native binaries, YARA, supply chain and outliers.
+
+```bash
+jest-security analyzers install rs        # optional analyzers, built from source:
+jest-security analyzers install go        #   rs needs Rust, go needs Go,
+jest-security analyzers install py        #   py needs Python 3.9+, jl needs Julia 1.10+
+jest-security analyzers install jl
+jest-security scan-extension --deep              # every installed extension; coverage table at the end
+jest-security scan-extension --deep --online     # plus OSV, published-VSIX comparison, Marketplace reputation
+```
+
+**Runtime audit (the extension's code runs).** `audit-extension` starts the extension with an IAST agent. The agent hooks `child_process`, `fs`, `http`/`https`/`fetch`, `dns`, `net`/`dgram`, `eval`/`Function`/`vm` and the clipboard.
+
+The extension runs against:
+- a recording `vscode` API;
+- a **decoy home folder** with fake SSH keys and cloud, git, npm, kube, docker and GitHub tokens;
+- a **decoy workspace** with `.env`, PEM, `credentials.json` and `secrets.yaml`.
+
+Reading or sending any of those secrets is therefore visible, and none of your real ones are exposed. After the run, every static finding is marked **confirmed**, **not observed** or **static only**, with the observed call next to the code location. Behaviour no static rule predicted is listed as **runtime-only**.
+
+```bash
+jest-security audit-extension ./some-extension --yes --offline                 # headless (default), report + audit.sarif
+jest-security audit-extension suspicious.vsix --yes --offline --invoke-commands --deep
+jest-security audit-extension ./ext --yes --mode vscode --duration 60          # inside a separate real VS Code instance
+sudo -E jest-security audit-extension ./ext --yes --kernel --allow-exec        # Linux + bpftrace: raw sockets, W+X memory
+```
+
+| Runtime vector | What it records |
+|---|---|
+| `runtime/child-process-spawned` | command lines; `curl … \| sh`, `powershell`, `cmd.exe` and similar raise it to high |
+| `runtime/fs-access-violation` | reads and writes outside the extension, workspace and temp folders; decoy-secret reads are high |
+| `runtime/dynamic-eval-execution` | code passed to `eval` / `Function` / `vm`, matched against loader / process / network patterns |
+| `runtime/dns-and-http-destinations` | hosts, ports and payload sizes; IP literals, dynamic DNS, undeclared hosts and large uploads; decoy secrets in a request body are high |
+| `runtime/clipboard-poll-frequency` | clipboard reads per minute with no user action |
+| `runtime/orphan-process-daemon` | processes still alive after the extension host exits (reported, then killed) |
+| `runtime/network-raw-socket` | UDP and non-web TCP from JavaScript; `SOCK_RAW` from native code (kernel probes) |
+| `runtime/mprotect-rwx` | W+X memory beyond what an empty extension produces (kernel probes) |
+
+> ⚠️ **Safety.** `audit-extension` runs the extension's code as you. It refuses without `--yes`.
+> - By default, child processes are recorded and replaced by a no-op; `--allow-exec` runs them.
+> - `--offline` blocks DNS and connections, which are still recorded.
+> - For anything you already suspect, use a throw-away VM or container.
+>
+> Kernel probes need Linux, root and `bpftrace`. On macOS they need an Endpoint Security entitlement, so they are reported as skipped there.
+
 #### Step 6 — Update or uninstall
 
 - **VS Code commands:** after an extension update the command is refreshed automatically. To remove it, run *… Uninstall '<tool>' Command* from the Command Palette; it deletes only files it created.
@@ -671,6 +720,55 @@ steps:
 - 當擴充套件為高風險、被列為惡意程式，或違反政策檔（`.github/jest-security.yml`：允許清單、封鎖發行者、只允許特定發行者、只允許已驗證發行者）時，檢查會失敗。
 
 在本機或其他 CI 系統執行相同檢查：`jest-security scan-manifest --base origin/main`。所有選項請見 [CLI README](packages/cli/README.md#extension-guard-block-risky-extensions-in-pull-requests)。
+
+#### 步驟 5c — 深度檢查擴充套件，再觀察它實際做了什麼
+
+**靜態深度掃描（不執行任何程式）。** 共 157 個檢測向量：
+- manifest 與程式碼：程序執行、憑證路徑、外洩端點、動態 DNS 主機、未宣告的追蹤遙測、混淆（夏農熵高於 5.8 bits/char、hex / unicode 跳脫字元密度、JSFuck）、未被引用的壓縮檔與二進位檔，以及 VS Code API 濫用（終端機注入、覆寫內建指令、偵錯工作階段掛鉤、啟用腳本的 WebView 載入遠端內容）；
+- 搭配選用分析器：資料流、原生二進位檔、YARA、供應鏈與離群值。
+
+```bash
+jest-security analyzers install rs        # 選用分析器，自原始碼建置：
+jest-security analyzers install go        #   rs 需要 Rust、go 需要 Go、
+jest-security analyzers install py        #   py 需要 Python 3.9+、jl 需要 Julia 1.10+
+jest-security analyzers install jl
+jest-security scan-extension --deep              # 所有已安裝的擴充套件；最後附覆蓋率表
+jest-security scan-extension --deep --online     # 另加 OSV、與已發佈 VSIX 比對、Marketplace 信譽
+```
+
+**執行期稽核（會執行擴充套件的程式碼）。** `audit-extension` 以 IAST 代理程式啟動擴充套件，掛鉤 `child_process`、`fs`、`http`/`https`/`fetch`、`dns`、`net`/`dgram`、`eval`/`Function`/`vm` 與剪貼簿。
+
+擴充套件執行時面對的是：
+- 會記錄呼叫的 `vscode` API；
+- **誘餌家目錄**：假的 SSH 金鑰，以及雲端、git、npm、kube、docker、GitHub 權杖；
+- **誘餌工作區**：`.env`、PEM、`credentials.json`、`secrets.yaml`。
+
+因此讀取或外送這些機密都能被觀察到，而你真正的機密不會外露。執行結束後，每個靜態發現會標示為 **已證實**、**未觀察到** 或 **僅靜態**，並把觀察到的呼叫與程式碼位置並列。沒有任何靜態規則預料到的行為，會列為 **僅執行期**。
+
+```bash
+jest-security audit-extension ./some-extension --yes --offline                 # 無頭模式（預設），報告 + audit.sarif
+jest-security audit-extension suspicious.vsix --yes --offline --invoke-commands --deep
+jest-security audit-extension ./ext --yes --mode vscode --duration 60          # 在另一個獨立的真實 VS Code 實例中執行
+sudo -E jest-security audit-extension ./ext --yes --kernel --allow-exec        # Linux + bpftrace：raw socket、W+X 記憶體
+```
+
+| 執行期向量 | 記錄內容 |
+|---|---|
+| `runtime/child-process-spawned` | 命令列；`curl … \| sh`、`powershell`、`cmd.exe` 等會提升為高風險 |
+| `runtime/fs-access-violation` | 在擴充套件、工作區與暫存資料夾以外的讀寫；讀取誘餌機密為高風險 |
+| `runtime/dynamic-eval-execution` | 傳入 `eval` / `Function` / `vm` 的程式碼，比對載入 / 程序 / 網路特徵 |
+| `runtime/dns-and-http-destinations` | 主機、連接埠與傳送量；IP 字面值、動態 DNS、未宣告主機與大量上傳；請求內容含誘餌機密為高風險 |
+| `runtime/clipboard-poll-frequency` | 無使用者操作時每分鐘讀取剪貼簿的次數 |
+| `runtime/orphan-process-daemon` | 擴充套件主機結束後仍存活的程序（回報後終止） |
+| `runtime/network-raw-socket` | JavaScript 發出的 UDP 與非 Web TCP；原生程式的 `SOCK_RAW`（核心探針） |
+| `runtime/mprotect-rwx` | 超出空擴充套件基準的可寫且可執行記憶體（核心探針） |
+
+> ⚠️ **安全須知。** `audit-extension` 會以你的身分執行擴充套件的程式碼，未加 `--yes` 時會拒絕執行。
+> - 預設會記錄子程序並以無作用程序取代；`--allow-exec` 才會真正執行。
+> - `--offline` 會阻擋 DNS 與連線（仍會記錄）。
+> - 已經可疑的擴充套件請在拋棄式 VM 或容器中稽核。
+>
+> 核心探針需要 Linux、root 與 `bpftrace`。macOS 需要 Endpoint Security 授權，因此在 macOS 上會標示為略過。
 
 #### 步驟 6 — 更新或移除
 

@@ -149,3 +149,21 @@ jobs:
       - name: Test
         working-directory: analyzers/julia
         run: julia --startup-file=no --project=. -e "using Pkg; Pkg.instantiate(); Pkg.test()"
+
+  runtime-audit-kernel:
+    # Kernel probes (bpftrace, root) for audit-extension --kernel. Not yet proven on hosted runners.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w @jest-test-team/security-cli
+      - run: sudo apt-get update && sudo apt-get install -y bpftrace
+      - name: Audit the fixtures with kernel probes
+        run: |
+          sudo -E env "PATH=$PATH" node packages/cli/dist/jest-security.js audit-extension packages/cli/test/fixtures/runtime/daemon --yes --offline --allow-exec --kernel --duration 2 --format json --out kernel.json --fail-on none
+          node -e "const r=require('./kernel.json'); console.log('kernel:', r.run.kernelSkipped || 'ran', 'baseline W+X', r.run.baselineRwx); if (r.run.kernelSkipped) process.exit(1); if (!r.runtime.signals.some(s=>s.id==='runtime/orphan-process-daemon')) process.exit(1)"

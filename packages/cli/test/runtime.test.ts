@@ -81,3 +81,27 @@ describe('runtime audit helpers', () => {
     expect(shim).toContain("require(\"./extension.js\")");
   });
 });
+
+describe('jest-security audit-extension', () => {
+  it('refuses to run code without --yes', async () => {
+    const { main } = await import('../src/security');
+    const { captureIo } = await import('./io');
+    const io = captureIo(REPO);
+    expect(await main(['audit-extension', join(FX, 'evil')], io)).toBe(2);
+    expect(io.stderr()).toContain('RUNS THE EXTENSION');
+  });
+
+  it('cross-references static findings with runtime evidence', async () => {
+    const { main } = await import('../src/security');
+    const { captureIo } = await import('./io');
+    const io = captureIo(REPO);
+    const code = await main(['audit-extension', join(FX, 'evil'), '--yes', '--offline', '--duration', '1', '--format', 'json', '--out', '-'], io);
+    expect(code).toBe(1);
+    const r = JSON.parse(io.stdout()) as { combined: { level: string }; chain: { confirmed: number; links: { vector: string; verdict: string }[] } };
+    expect(r.combined.level).toBe('high');
+    const verdict = Object.fromEntries(r.chain.links.map((l) => [l.vector, l.verdict]));
+    expect(verdict).toMatchObject({ 'ext/ssh-keys': 'confirmed', 'ext/pipe-to-shell': 'confirmed', 'ext/command-override': 'confirmed', 'ext/terminal-injection': 'confirmed', 'ext/raw-socket': 'confirmed' });
+    const benign = captureIo(REPO);
+    expect(await main(['audit-extension', join(FX, 'benign'), '--yes', '--offline', '--duration', '1', '--format', 'json', '--out', '-'], benign)).toBe(0);
+  }, 120_000);
+});

@@ -8,6 +8,7 @@ import { ENGINE_BINARIES, ENGINE_NAMES, type EngineId } from './analyzers/protoc
 import { SIGNALS } from '../../../extensions/endpoint-security/src/extscan/signals';
 import { analysisText, analyzeExtensions } from './extAnalysis';
 import { scanManifest } from './ci/command';
+import { auditExtensionCmd } from './runtime/command';
 import { chmodSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, join } from 'node:path';
@@ -507,6 +508,7 @@ export const SECURITY_TOOL: Tool = {
     scanExtension,
     { ...scanExtension, name: 'scan-extensions', summary: 'Alias of scan-extension' },
     scanManifest,
+    auditExtensionCmd,
     analyzersCmd,
     doctor,
   ],
