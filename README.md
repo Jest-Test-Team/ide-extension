@@ -309,6 +309,31 @@ jobs:
       - run: jest-hw entropy firmware/trng-dump.bin --bits 8 --min 7.5   # optional gate
 ```
 
+#### Step 5b — Guard the team's extension list in pull requests
+
+When someone adds an extension to `.vscode/extensions.json`, a dev container or a `.code-workspace` file, the **extension guard** downloads it from the Marketplace and scans it before it reaches teammates. It also checks it against Microsoft's list of extensions removed for malware.
+
+Copy [`docs/ci/extension-guard.yml`](docs/ci/extension-guard.yml) to `.github/workflows/`. The core of it is:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write     # summary comment on the PR
+  security-events: write   # SARIF in code scanning
+steps:
+  - uses: actions/checkout@v4
+  - uses: Jest-Test-Team/ide-extension@v1
+    with:
+      fail-on: high        # or medium
+```
+
+The pull request then gets:
+- a risk table in the job summary and in one PR comment that updates on each push;
+- an annotation on the manifest line that adds a risky extension;
+- a failed check when an extension is high risk, is listed as malware, or breaks your policy file (`.github/jest-security.yml`: allowlist, blocked publishers, allowed publishers only, verified publishers only).
+
+To run the same check locally or in another CI system: `jest-security scan-manifest --base origin/main`. See the [CLI README](packages/cli/README.md#extension-guard-block-risky-extensions-in-pull-requests) for every option.
+
 #### Step 6 — Update or uninstall
 
 - **VS Code commands:** after an extension update the command is refreshed automatically. To remove it, run *… Uninstall '<tool>' Command* from the Command Palette; it deletes only files it created.
@@ -621,6 +646,31 @@ jobs:
           sarif_file: security.sarif
       - run: jest-hw entropy firmware/trng-dump.bin --bits 8 --min 7.5   # 選用的熵值門檻
 ```
+
+#### 步驟 5b — 在 Pull Request 中把關團隊的擴充套件清單
+
+有人在 `.vscode/extensions.json`、dev container 或 `.code-workspace` 中加入擴充套件時，**extension guard** 會先從 Marketplace 下載並掃描它，再讓它進到團隊成員的電腦；同時比對 Microsoft 因惡意程式而下架的擴充套件清單。
+
+把 [`docs/ci/extension-guard.yml`](docs/ci/extension-guard.yml) 複製到 `.github/workflows/`，核心內容如下：
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write     # 在 PR 留下摘要留言
+  security-events: write   # 上傳 SARIF 到 code scanning
+steps:
+  - uses: actions/checkout@v4
+  - uses: Jest-Test-Team/ide-extension@v1
+    with:
+      fail-on: high        # 或 medium
+```
+
+之後每個 Pull Request 會得到：
+- 工作摘要中的風險表，以及一則每次推送都會更新的 PR 留言；
+- 在加入高風險擴充套件的那一行標註警告；
+- 當擴充套件為高風險、被列為惡意程式，或違反政策檔（`.github/jest-security.yml`：允許清單、封鎖發行者、只允許特定發行者、只允許已驗證發行者）時，檢查會失敗。
+
+在本機或其他 CI 系統執行相同檢查：`jest-security scan-manifest --base origin/main`。所有選項請見 [CLI README](packages/cli/README.md#extension-guard-block-risky-extensions-in-pull-requests)。
 
 #### 步驟 6 — 更新或移除
 

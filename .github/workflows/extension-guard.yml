@@ -1,0 +1,37 @@
+# Dogfood of the extension guard action (action.yml at the repository root), built from source.
+# Manual runs can point it at another list, e.g. the known-bad fixture, to watch it block a change:
+#   gh workflow run extension-guard.yml -f manifests=packages/cli/test/fixtures/ci/known-bad/extensions.json
+name: Extension guard
+
+on:
+  pull_request:
+    paths: ['.vscode/extensions.json', '.github/jest-security.yml', 'action.yml', 'packages/cli/src/ci/**']
+  push:
+    branches: [main]
+    paths: ['.vscode/extensions.json', '.github/jest-security.yml', 'action.yml', 'packages/cli/src/ci/**']
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      manifests:
+        description: Extension list(s) to scan
+        default: .vscode/extensions.json
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  extensions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        id: guard
+        with:
+          version: source
+          # Only the repository's own list: the test fixtures hold deliberately bad ones.
+          manifests: ${{ inputs.manifests || '.vscode/extensions.json' }}
+          base: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'none' || '' }}
+      - run: echo "scanned=${{ steps.guard.outputs.scanned }} high=${{ steps.guard.outputs.high }} medium=${{ steps.guard.outputs.medium }}"

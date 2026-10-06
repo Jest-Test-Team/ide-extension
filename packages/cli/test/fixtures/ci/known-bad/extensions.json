@@ -1,0 +1,14 @@
+[
+  {
+    "identifier": {
+      "id": "dbaeumer.vscode-eslint"
+    },
+    "version": "3.0.34"
+  },
+  {
+    "identifier": {
+      "id": "production-sun-set.theme-sunset-gradient"
+    },
+    "version": "1.0.0"
+  }
+]

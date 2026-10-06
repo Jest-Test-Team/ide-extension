@@ -36,6 +36,101 @@ Each VS Code extension also bundles its own command; run **Install '<tool>' Comm
     sarif_file: security.sarif
 ```
 
+## Extension guard: block risky extensions in pull requests
+
+`jest-security scan-manifest` checks the extension lists committed to a repository:
+- `.vscode/extensions.json` recommendations
+- dev container `customizations.vscode.extensions`
+- `*.code-workspace` files
+- a committed VS Code profile `extensions.json`, or `code --list-extensions --show-versions` output, when you name the file
+
+For each extension a change **adds or re-versions**, it:
+1. downloads the package from the VS Marketplace (or Open VSX);
+2. checks the registry's published SHA-256;
+3. unpacks it defensively (nothing runs);
+4. scans it with the same engine as `scan-extension`.
+
+Extensions that can no longer be downloaded are still judged by their identifier: Microsoft's list of removed extensions, look-alike names, and "not on the registry". This catches an extension that was already taken down for malware.
+
+### GitHub Action
+
+```yaml
+# .github/workflows/extension-guard.yml — full example: docs/ci/extension-guard.yml
+on:
+  pull_request:
+    paths: ['**/.vscode/extensions.json', '**/devcontainer.json', '**/.devcontainer.json', '**/*.code-workspace']
+permissions:
+  contents: read
+  pull-requests: write     # summary comment
+  security-events: write   # SARIF upload
+jobs:
+  extensions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Jest-Test-Team/ide-extension@v1
+```
+
+On a pull request the action:
+- compares the branch with its base and scans only added or version-changed extensions;
+- writes a risk table to the job summary and keeps one PR comment up to date;
+- annotates the manifest line that adds a risky extension;
+- uploads SARIF to code scanning (private repositories need GitHub Advanced Security; without it the step is skipped);
+- **fails the check** when an extension reaches `fail-on` (default `high`) or breaks the policy.
+
+Add a weekly `schedule` run with `base: none` as well: an extension approved months ago can be listed as malware today.
+
+Inputs:
+
+| Input | Default | Purpose |
+|---|---|---|
+| `fail-on` | policy, else `high` | Risk level that fails the check (`high`, `medium`, `none`) |
+| `policy` | `.github/jest-security.yml` | Policy file (see below) |
+| `manifests` | auto-discover | Files or folders, separated by spaces or new lines |
+| `base` | PR base / previous push | `none` scans everything |
+| `scan-all` | `false` | Also scan unchanged extensions |
+| `registry`, `registry-url` | `marketplace` | `open-vsx`, or a private mirror |
+| `target-platform` | `linux-x64` | Which build of platform-specific extensions to scan |
+| `comment`, `sarif` | `true` | PR comment, code scanning upload |
+| `fail-on-incomplete` | `true` | Fail when a package could not be downloaded |
+| `version` | pinned | CLI version (`source` builds it from the action checkout) |
+
+Outputs: `exit-code`, `scanned`, `high`, `medium`, `sarif-file`, `summary-file`.
+
+### Policy file
+
+```yaml
+# .github/jest-security.yml
+fail-on: high                     # or medium / none
+allowlist:                        # reasons are still listed, but not scored
+  - ms-python.python
+  - acme.internal-tools@2.4.1     # this version only; an update is scored again
+blocked:
+  - some-publisher.*              # a whole publisher
+  - bad.extension
+allowed-publishers: []            # when set, only these publishers may be added
+require-verified-publisher: false # require a Marketplace-verified domain
+trusted-publishers: [acme]        # count as well known in the scoring
+```
+
+Unknown keys are errors, so a typo cannot quietly weaken the policy.
+
+### Other CI systems
+
+```bash
+npx --yes --package=@jest-test-team/security-cli jest-security scan-manifest \
+  --base "$TARGET_BRANCH_SHA" --out extensions.sarif --summary summary.md
+# exit 0 = pass, 1 = blocked, 2 = some extensions could not be scanned (or wrong usage)
+```
+
+In GitLab CI use `$CI_MERGE_REQUEST_DIFF_BASE_SHA`; in Azure Pipelines use `origin/$(System.PullRequest.TargetBranch)`. The base revision needs to be fetched, but only that one commit: `git fetch --depth=1 origin <sha>`.
+
+### Privacy and limits
+
+- The registry is contacted to resolve and download packages, and for publisher reputation (`--no-online` turns reputation off). Only extension identifiers are sent, which the repository lists publicly to its readers anyway.
+- `.vscode/extensions.json` has no versions, so CI scans the version a teammate would install **today**. Pin versions in dev containers (`publisher.name@1.2.3`) to gate exact builds.
+- The scan is heuristic. It reports risk signals and their reasons; it is not a verdict.
+
 ## Reference
 
 This section is generated from `--help`.
@@ -456,7 +551,7 @@ Options:
 ### jest-security
 
 ```text
-jest-security 0.1.4 — Security & Systems Engineering Pack — all tools in one command
+jest-security 0.2.0 — Security & Systems Engineering Pack — all tools in one command
 
 Usage: jest-security <command> [options]
 
@@ -468,6 +563,8 @@ Commands:
   scan             Full security audit: lint the code AND risk-scan installed VS Code / Cursor extensions; prints a report and writes one SARIF file (default security.sarif)
   scan-extension   Find every installed extension (VS Code, Insiders, VSCodium, Cursor, Windsurf, remote), scan and analyse them; report in the terminal and security.sarif
   scan-extensions  Alias of scan-extension
+  scan-manifest    CI gate: scan extensions a repository recommends (.vscode/extensions.json, dev containers, workspaces) by downloading them; fail on risk or policy
+  analyzers        Show the optional deep-inspection analyzers (Rust, Go, Python, Julia), or install one: analyzers install rs|go|py|jl
   doctor           Check the installation: versions, bundled data, and external tools (julia, git)
 
 Run "jest-security <command> --help" for command options.
@@ -475,6 +572,7 @@ Run "jest-security <command> --help" for command options.
 Examples:
   jest-security scan                      # full audit: code + installed extensions → report + security.sarif
   jest-security scan-extension            # installed extensions only: discover, scan, analyse → report + security.sarif
+  jest-security scan-manifest --base origin/main   # CI: scan extensions this branch adds to the repo's extension lists
   jest-security endpoint simulate attack.ptree.yaml
   jest-security hw entropy trng.bin --bits 8
   jest-security julia report profile.json
@@ -562,6 +660,46 @@ Examples:
 
 </details>
 
+<details><summary><code>jest-security scan-manifest</code></summary>
+
+```text
+Usage: jest-security scan-manifest [manifest files or folders…] [options]
+
+CI gate: scan extensions a repository recommends (.vscode/extensions.json, dev containers, workspaces) by downloading them; fail on risk or policy
+
+Options:
+      --base <git-ref>                        Compare with this revision; only added or version-changed extensions are scanned (e.g. origin/main)
+      --all                                   With --base, also scan unchanged extensions
+      --registry <marketplace|open-vsx>       Where to download packages from (default: marketplace)
+      --registry-url <url>                    Registry base URL, for a private Marketplace / Open VSX mirror (default https://marketplace.visualstudio.com or https://open-vsx.org)
+      --target-platform <platform>            Build to scan for platform-specific extensions (default: linux-x64)
+      --cache-dir <dir>                       Download cache (default $RUNNER_TEMP/jest-security-vsix or the temp folder)
+      --policy <file>                         Policy file (default .github/jest-security.yml when it exists)
+      --fail-on <high|medium|none>            Exit 1 when a new or changed extension reaches this level (default: policy, else high)
+  -f, --format <sarif|md|json|text>           Format of the --out file (the terminal always gets the readable report) (default: sarif)
+  -o, --out <file>                            Report file (--out - prints the file format to stdout instead) (default: security.sarif)
+      --summary <file>                        Append the Markdown summary to this file (e.g. $GITHUB_STEP_SUMMARY)
+      --annotations                           Print GitHub annotations on the manifest lines (default: on inside GitHub Actions)
+      --allowlist <publisher.name[@version]>  Trust these extensions (added to the policy allowlist) (repeatable)
+      --trusted-publisher <publisher>         Treat this publisher as known (repeatable)
+      --node-modules                          Also scan bundled node_modules
+      --max-files <number>                    Maximum JavaScript files scanned per extension (default: 2000)
+      --deep                                  Also run the installed Rust / Go / Python / Julia analyzers (deep inspection)
+      --analyzers <rs|go|py|jl>               Run only these analyzers (implies --deep) (repeatable)
+      --online                                Marketplace reputation lookups (verified publisher, installs); the registry is contacted for downloads anyway
+      --analyzer-timeout <seconds>            Per-analyzer time limit (default: 600)
+  -h, --help                                  Show this help
+
+Examples:
+  jest-security scan-manifest                               # every extension the repo recommends
+  jest-security scan-manifest --base origin/main            # only what this branch adds or re-versions
+  jest-security scan-manifest .devcontainer --fail-on medium
+  jest-security scan-manifest --base "$BASE_SHA" --summary "$GITHUB_STEP_SUMMARY" --out ext.sarif
+  jest-security scan-manifest team-extensions.txt --registry open-vsx
+```
+
+</details>
+
 <details><summary><code>jest-security doctor</code></summary>
 
 ```text
@@ -580,4 +718,5 @@ Options:
 - Every command reads files only.
 - `simulate` replays event data and never executes anything.
 - `extensions` reads installed extensions from disk and makes no network calls.
+- `scan-manifest` is the exception: it downloads the extensions a repository lists from the registry (VS Marketplace or Open VSX), sending only their identifiers. Packages are unpacked into a cache and read; nothing in them is executed.
 - `jest-julia analyze` and `bench` run your Julia project with SnoopCompile or BenchmarkTools. They install into a private cache environment (`~/.cache/jest-julia`), so your `Project.toml` is never modified.

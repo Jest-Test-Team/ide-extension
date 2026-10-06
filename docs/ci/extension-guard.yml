@@ -1,0 +1,43 @@
+# Extension guard: copy to .github/workflows/extension-guard.yml in your repository.
+# Scans every VS Code extension a pull request adds to the team's extension lists
+# (.vscode/extensions.json, dev containers, *.code-workspace) and blocks risky or
+# known-malicious ones. A weekly run rescans everything, because extensions can be
+# flagged after they were approved.
+name: Extension guard
+
+on:
+  pull_request:
+    paths:
+      - '**/.vscode/extensions.json'
+      - '**/devcontainer.json'
+      - '**/.devcontainer.json'
+      - '**/*.code-workspace'
+      - '.github/jest-security.yml'
+  push:
+    branches: [main]
+    paths:
+      - '**/.vscode/extensions.json'
+      - '**/devcontainer.json'
+      - '**/.devcontainer.json'
+      - '**/*.code-workspace'
+      - '.github/jest-security.yml'
+  schedule:
+    - cron: '17 6 * * 1'   # Mondays: rescan everything against the latest known-bad list
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write     # summary comment on the PR
+  security-events: write   # SARIF upload to code scanning
+
+jobs:
+  extensions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Jest-Test-Team/ide-extension@v1
+        with:
+          # Scheduled / manual runs have no base: scan every listed extension.
+          base: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'none' || '' }}
+          # fail-on: medium              # stricter than the default (high)
+          # policy: .github/jest-security.yml
