@@ -14,9 +14,17 @@ export interface Orphan {
 function alive(pid: number): boolean {
   try {
     process.kill(pid, 0);
-    return true;
   } catch (e) {
     return (e as NodeJS.ErrnoException).code === 'EPERM';
+  }
+  if (process.platform === 'win32') {
+    return true;
+  }
+  // A process that was just killed lingers as a zombie until it is reaped; it is not running.
+  try {
+    return !execFileSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' }).trim().startsWith('Z');
+  } catch {
+    return false;
   }
 }
 
