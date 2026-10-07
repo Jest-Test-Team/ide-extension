@@ -18,3 +18,4 @@ __pycache__/
 /analyzers/rust/target/debug
 analyzers/rust/target/
 analyzers/julia/Manifest.toml
+vsix/封存.zip
