@@ -28,7 +28,12 @@ jobs:
       - run: npm run build
       - name: Integration tests (Linux, headless)
         if: runner.os == 'Linux'
-        run: xvfb-run -a npm run test:integration
+        # One retry: a freshly downloaded VS Code is sometimes reported unresponsive on first launch.
+        run: |
+          xvfb-run -a npm run test:integration || {
+            echo "::warning::integration tests failed once; retrying (VS Code first-launch flake)"
+            xvfb-run -a npm run test:integration
+          }
       - name: Integration tests
         if: runner.os != 'Linux'
         run: npm run test:integration

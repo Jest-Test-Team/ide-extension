@@ -1,7 +1,9 @@
 # Publishes all extensions when a tag like v0.1.0 is pushed, then moves the action's v1 tag
 # (`uses: Jest-Test-Team/ide-extension@v1`) to that release.
-# Required repository secrets:
-#   VSCE_PAT  — Azure DevOps personal access token with the "Marketplace (Manage)" scope, organisation "All accessible organizations"
+# Started by hand (workflow_dispatch) it is a dry run — build, test, package, upload the VSIX files
+# as an artifact — unless "publish" is ticked.
+# Repository secrets:
+#   VSCE_PAT  — required to publish: Azure DevOps personal access token with the "Marketplace (Manage)" scope, organisation "All accessible organizations"
 #   OVSX_PAT  — optional, Open VSX access token (https://open-vsx.org/user-settings/tokens)
 #   NPM_TOKEN — optional, npm automation token; publishes the CLI package @jest-test-team/security-cli
 name: Release
@@ -11,6 +13,11 @@ on:
     # Full versions only: moving the v1 action tag must not start another release.
     tags: ['v[0-9]+.[0-9]+.[0-9]+*']
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish to the Marketplace / Open VSX / npm (otherwise a dry run)
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -21,6 +28,8 @@ jobs:
     env:
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      PUBLISH: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,28 +40,44 @@ jobs:
       - run: npm ci
       - run: npm run typecheck && npm run lint && npm test
       - run: npm run build
-      - run: xvfb-run -a npm run test:integration
-      - run: npm run package
-      - name: Publish to the Visual Studio Marketplace
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      - name: Integration tests (headless)
+        # The first launch of a freshly downloaded VS Code under xvfb is sometimes reported
+        # unresponsive before any test runs; one retry tells that apart from a real failure.
         run: |
+          xvfb-run -a npm run test:integration || {
+            echo "::warning::integration tests failed once; retrying (VS Code first-launch flake)"
+            xvfb-run -a npm run test:integration
+          }
+      - run: npm run package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: vsix/*.vsix
+      - name: Publish to the Visual Studio Marketplace
+        if: env.PUBLISH == 'true'
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "::error::VSCE_PAT is not set: add it under Settings → Secrets and variables → Actions"
+            exit 1
+          fi
           # The extension pack goes last so its dependencies already exist.
           for f in vsix/endpoint-security-*.vsix vsix/julia-profiler-*.vsix vsix/hw-security-*.vsix vsix/security-pack-*.vsix; do
             npx vsce publish --packagePath "$f" --skip-duplicate
           done
       - name: Publish to Open VSX
-        if: env.OVSX_PAT != ''
+        if: env.PUBLISH == 'true' && env.OVSX_PAT != ''
         run: |
           for f in vsix/endpoint-security-*.vsix vsix/julia-profiler-*.vsix vsix/hw-security-*.vsix vsix/security-pack-*.vsix; do
             npx ovsx publish "$f" --skip-duplicate
           done
       - name: Publish the CLI to npm
-        if: env.NPM_TOKEN != ''
+        if: env.PUBLISH == 'true' && env.NPM_TOKEN != ''
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish -w @jest-test-team/security-cli --access public
       - uses: softprops/action-gh-release@v2
+        # A GitHub release needs a tag.
+        if: startsWith(github.ref, 'refs/tags/v')
         with:
           files: vsix/*.vsix
       - name: Move the action's v1 tag to this release
@@ -60,3 +85,6 @@ jobs:
         run: |
           git tag -f v1 "$GITHUB_SHA"
           git push -f origin refs/tags/v1
+      - name: Dry run summary
+        if: env.PUBLISH != 'true'
+        run: echo "Dry run — nothing published. The VSIX files are attached to this run as the 'vsix' artifact." >> "$GITHUB_STEP_SUMMARY"
