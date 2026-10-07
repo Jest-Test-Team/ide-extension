@@ -27,6 +27,9 @@ const LOCAL = /^(localhost|127\.\d+\.\d+\.\d+|::1|0\.0\.0\.0)$/;
 const BIG_UPLOAD = 64 * 1024;
 const WORKSPACE_SECRET = /(^|[/\\])(\.env|credentials\.json|secrets?\.ya?ml|[^/\\]+\.(pem|key|p12|pfx))$/i;
 
+/** Paths shown in messages use forward slashes on every OS. */
+const slash = (p: string) => p.replace(/\\/g, '/');
+
 const inside = (p: string, root: string) => {
   const r = relative(root, p);
   return r === '' || (!!r && !r.startsWith('..') && !isAbsolute(r));
@@ -123,11 +126,11 @@ export function classify(events: RuntimeEvent[], sb: Sandbox, opts: { duration: 
       !/^\/(dev|proc\/self)\//.test(String(e.path)),
   );
   if (homeReads.length || homeWrites.length || homeOther.length || wsSecrets.length || outside.length) {
-    const rel = (e: RuntimeEvent) => (inside(String(e.path), sb.home) ? `~/${relative(sb.home, String(e.path))}` : String(e.path));
+    const rel = (e: RuntimeEvent) => (inside(String(e.path), sb.home) ? `~/${slash(relative(sb.home, String(e.path)))}` : String(e.path));
     const parts: string[] = [];
     if (homeReads.length) {parts.push(`read decoy home secrets ${[...new Set(homeReads.map(rel))].slice(0, 4).join(', ')}`);}
     if (homeWrites.length) {parts.push(`wrote into the home folder ${[...new Set(homeWrites.map(rel))].slice(0, 3).join(', ')}`);}
-    if (wsSecrets.length) {parts.push(`read workspace secrets ${[...new Set(wsSecrets.map((e) => relative(sb.workspace, String(e.path))))].slice(0, 4).join(', ')}`);}
+    if (wsSecrets.length) {parts.push(`read workspace secrets ${[...new Set(wsSecrets.map((e) => slash(relative(sb.workspace, String(e.path)))))].slice(0, 4).join(', ')}`);}
     if (homeOther.length) {parts.push(`read the home folder (${[...new Set(homeOther.map(rel))].slice(0, 3).join(', ')})`);}
     if (outside.length) {parts.push(`touched ${new Set(outside.map((e) => e.path)).size} path(s) outside its folders, e.g. ${outside[0].path}`);}
     const all = [...homeReads, ...homeWrites, ...wsSecrets, ...homeOther, ...outside];
