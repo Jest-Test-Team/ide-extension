@@ -1,5 +1,5 @@
 name: Jest Security Extension Guard
-description: Scan the VS Code extensions your repository recommends (extensions.json, dev containers, workspaces) and block risky or known-malicious ones in pull requests.
+description: Block risky or known-malicious VS Code extensions recommended in extensions.json, dev containers and workspaces.
 author: Jest-Test-Team
 branding:
   icon: shield
@@ -97,12 +97,21 @@ runs:
         ACTION_PATH: ${{ github.action_path }}
       run: |
         set -euo pipefail
-        if [ "$VERSION" = "source" ]; then
+        build_source() {
           (cd "$ACTION_PATH" && npm ci --ignore-scripts --no-audit --no-fund && npm run build -w @jest-test-team/security-cli)
           echo "cmd=node $ACTION_PATH/packages/cli/dist/jest-security.js" >> "$GITHUB_OUTPUT"
+        }
+        if [ "$VERSION" = "source" ]; then
+          build_source
         else
           if ! [[ "$VERSION" =~ ^[0-9A-Za-z.+-]+$ ]]; then echo "::error::invalid version input"; exit 2; fi
-          echo "cmd=npx --yes --package=@jest-test-team/security-cli@$VERSION jest-security" >> "$GITHUB_OUTPUT"
+          if npm view "@jest-test-team/security-cli@$VERSION" version >/dev/null 2>&1; then
+            echo "cmd=npx --yes --package=@jest-test-team/security-cli@$VERSION jest-security" >> "$GITHUB_OUTPUT"
+          else
+            # Not on npm (yet): the action checkout at this tag contains the same CLI source.
+            echo "::notice::@jest-test-team/security-cli@$VERSION is not on npm; building it from the action source"
+            build_source
+          fi
         fi
 
     - name: Find the base revision
