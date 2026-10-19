@@ -2,6 +2,12 @@
 
 Editor support for people building EDR / AV agents and SIEM / SOAR back-ends, plus a risk scan of the VS Code extensions you have installed.
 
+## Install
+
+Requires VS Code 1.90.0 or newer (compatible with `engines.vscode` `^1.90.0`).
+
+Once published on the Visual Studio Marketplace, this extension will be installable with `code --install-extension jest-test-team.endpoint-security` or by searching for `Endpoint Security & Compliance Toolkit` in the VS Code Extensions view. Until then, the currently available path is to build from source and use **Install from VSIX…** in VS Code (see the repo root README for the developer path).
+
 ## WFP, ETW and Endpoint Security API validation
 
 For C, C++, Objective-C and Rust (`windows` / `windows-sys` crates). A curated API database (`data/apis/*.json`) covering the Windows Filtering Platform (user and kernel mode), Event Tracing for Windows and Apple Endpoint Security drives:
