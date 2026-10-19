@@ -18,6 +18,8 @@ Shared code lives in [`packages/core`](packages/core): a web-tree-sitter host, t
 
 ### Install
 
+Requires VS Code 1.90.0 or newer (compatible with `engines.vscode` `^1.90.0`).
+
 Build the packages with `npm install && npm run package`, then install them. Install the three extensions first and the pack last: the pack refers to the others by Marketplace ID, so on its own it would try to download them from the Marketplace.
 
 ```bash
@@ -404,6 +406,8 @@ sudo -E jest-security audit-extension ./ext --yes --kernel --allow-exec        #
 ## 安裝與使用
 
 ### 安裝
+
+需要 VS Code 1.90.0 或更新版本（與 `engines.vscode` `^1.90.0` 相容）。
 
 先執行 `npm install && npm run package` 產生安裝檔，再進行安裝。請先安裝三個擴充套件，最後才裝 Pack：Pack 以 Marketplace ID 引用其他三個套件，若單獨安裝，它會嘗試從 Marketplace 下載。
 

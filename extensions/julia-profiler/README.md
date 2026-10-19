@@ -2,6 +2,14 @@
 
 Find and fix the causes of Julia compile latency — method invalidations and runtime-dispatch inference — without leaving VS Code.
 
+## Install
+
+Requires VS Code 1.90.0 or newer (compatible with `engines.vscode` `^1.90.0`).
+
+Marketplace: run `code --install-extension jest-test-team.julia-profiler`, or search for `Julia Invalidation & Compiler Profiler` in the VS Code Extensions view.
+
+Alternatively, build from source and use **Install from VSIX…** in VS Code (see the repo root README for the developer path).
+
 ## Features
 
 ### Invalidation & inference analysis
