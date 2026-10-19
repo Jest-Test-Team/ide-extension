@@ -6,9 +6,7 @@ Security tooling for ESP32 firmware, entropy sources / PUFs and side-channel eva
 
 Requires VS Code 1.90.0 or newer (compatible with `engines.vscode` `^1.90.0`).
 
-Marketplace: run `code --install-extension jest-test-team.hw-security`, or search for `Embedded Hardware Security Workbench` in the VS Code Extensions view.
-
-Alternatively, build from source and use **Install from VSIX…** in VS Code (see the repo root README for the developer path).
+Once published on the Visual Studio Marketplace, this extension will be installable with `code --install-extension jest-test-team.hw-security` or by searching for `Embedded Hardware Security Workbench` in the VS Code Extensions view. Until then, the currently available path is to build from source and use **Install from VSIX…** in VS Code (see the repo root README for the developer path).
 
 ## ESP32 / ESPHome firmware linter
 
